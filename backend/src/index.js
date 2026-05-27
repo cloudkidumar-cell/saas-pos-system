@@ -6,6 +6,7 @@ require('dotenv').config();
 const supabase = require('./config/supabase');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
+const productRoutes = require('./routes/products');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,7 @@ app.use(express.json());
 // Routes
 app.use('/auth', authRoutes);
 app.use('/admin', adminRoutes);
+app.use('/products', productRoutes);
 
 // Health check
 app.get('/health', async (req, res) => {
