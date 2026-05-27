@@ -5,12 +5,25 @@ const supabase = require('../config/supabase');
 // ================================
 const getProducts = async (req, res) => {
   try {
-    const { tenant_id } = req.user;
+    const { role } = req.user;
+
+    // Admin boleh pass tenant_id as query param
+    // Tenant guna tenant_id dari token sendiri
+    const tenantId = role === 'admin'
+      ? req.headers['x-tenant-id']
+      : req.user.tenant_id;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tenant ID diperlukan'
+      });
+    }
 
     const { data: products, error } = await supabase
       .from('products')
       .select('*')
-      .eq('tenant_id', tenant_id)
+      .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
