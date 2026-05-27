@@ -1,0 +1,97 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+
+class ApiService {
+  // Guna IP MacBook ko — bukan localhost
+  // Flutter simulator tak boleh access localhost
+  static const String baseUrl = 'http://192.168.0.64:3000';
+
+  // Get token dari storage
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('token');
+  }
+
+  // Save token
+  static Future<void> saveToken(String token) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', token);
+  }
+
+  // Remove token
+  static Future<void> removeToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('token');
+    await prefs.remove('user');
+  }
+
+  // Headers dengan token
+  static Future<Map<String, String>> getHeaders() async {
+    final token = await getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
+
+  // LOGIN
+  static Future<Map<String, dynamic>> login(
+    String email,
+    String password,
+  ) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/login'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      // Save token dan user
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('token', data['data']['token']);
+      await prefs.setString('user', jsonEncode(data['data']['user']));
+      return data;
+    } else {
+      throw Exception(data['message']);
+    }
+  }
+
+  // GET PRODUCTS
+  static Future<List<dynamic>> getProducts() async {
+    final headers = await getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/products'),
+      headers: headers,
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data['data'];
+    } else {
+      throw Exception(data['message']);
+    }
+  }
+
+  // GET PRODUCT BY BARCODE
+  static Future<Map<String, dynamic>> getProductByBarcode(
+    String barcode,
+  ) async {
+    final headers = await getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/products/barcode/$barcode'),
+      headers: headers,
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data['data'];
+    } else {
+      throw Exception(data['message']);
+    }
+  }
+}
