@@ -4,6 +4,8 @@ const helmet = require('helmet');
 require('dotenv').config();
 
 const supabase = require('./config/supabase');
+const authRoutes = require('./routes/auth');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -12,7 +14,10 @@ app.use(helmet());
 app.use(cors());
 app.use(express.json());
 
-// Health check — dengan database check
+// Routes
+app.use('/auth', authRoutes);
+
+// Health check
 app.get('/health', async (req, res) => {
   try {
     const { data, error } = await supabase
