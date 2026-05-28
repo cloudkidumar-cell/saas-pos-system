@@ -95,6 +95,74 @@ class ApiService {
     }
   }
 
+  // GET STAFF
+  static Future<List<dynamic>> getStaff() async {
+    final headers = await getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/staff'),
+      headers: headers,
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data['data'];
+    } else {
+      throw Exception(data['message']);
+    }
+  }
+
+  // ADD CASHIER
+  static Future<Map<String, dynamic>> addStaff(
+    String email,
+    String password,
+  ) async {
+    final headers = await getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/staff'),
+      headers: headers,
+      body: jsonEncode({'email': email, 'password': password}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      return data['data'];
+    } else {
+      throw Exception(data['message']);
+    }
+  }
+
+  // SUSPEND CASHIER
+  static Future<void> suspendStaff(String id) async {
+    final headers = await getHeaders();
+    final response = await http.put(
+      Uri.parse('$baseUrl/staff/$id/suspend'),
+      headers: headers,
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message']);
+    }
+  }
+
+  // DELETE CASHIER
+  static Future<void> deleteStaff(String id) async {
+    final headers = await getHeaders();
+    final response = await http.delete(
+      Uri.parse('$baseUrl/staff/$id'),
+      headers: headers,
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
+      throw Exception(data['message']);
+    }
+  }
+
   // CREATE SALE
   static Future<Map<String, dynamic>> createSale(
     List<Map<String, dynamic>> items,

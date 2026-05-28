@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../models/product.dart';
 import '../providers/cart_provider.dart';
 import 'scan_screen.dart';
 import 'cart_screen.dart';
+import 'staff_screen.dart';
+import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,11 +21,22 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Product> _products = [];
   bool _loading = true;
   String _error = '';
+  String _userRole = '';
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _loadUserRole();
+  }
+
+  Future<void> _loadUserRole() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userStr = prefs.getString('user');
+    if (userStr != null) {
+      final user = jsonDecode(userStr);
+      setState(() => _userRole = user['role'] ?? '');
+    }
   }
 
   Future<void> _loadProducts() async {
@@ -43,13 +58,23 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  Future<void> _logout() async {
+    await ApiService.removeToken();
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final cart = context.watch<CartProvider>();
 
     return Scaffold(
       backgroundColor: Colors.grey[100],
-
       appBar: AppBar(
         title: const Text(
           'POS System',
@@ -59,6 +84,18 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.black,
         elevation: 0,
         actions: [
+          // Staff button — tenant je nampak
+          if (_userRole == 'tenant')
+            IconButton(
+              icon: const Icon(Icons.people_outline),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const StaffScreen()),
+                );
+              },
+            ),
+
           // Cart icon
           Stack(
             children: [
@@ -93,6 +130,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
+
+          // Logout
+          IconButton(icon: const Icon(Icons.logout), onPressed: _logout),
         ],
       ),
 
