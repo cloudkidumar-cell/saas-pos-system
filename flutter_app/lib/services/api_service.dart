@@ -225,6 +225,31 @@ class ApiService {
     }
   }
 
+  // REGISTER TENANT
+  static Future<Map<String, dynamic>> register({
+    required String namaKedai,
+    required String email,
+    required String password,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/auth/register'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'nama_kedai': namaKedai,
+        'email': email,
+        'password': password,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      return data['data'];
+    } else {
+      throw Exception(data['message']);
+    }
+  }
+
   // RESTOCK PRODUCT
   static Future<void> restockProduct(String id, int quantity) async {
     final headers = await getHeaders();

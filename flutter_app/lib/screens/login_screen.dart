@@ -5,6 +5,7 @@ import '../config/theme.dart';
 import '../services/api_service.dart';
 import 'tenant/tenant_home.dart';
 import 'cashier/cashier_home.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,7 +33,6 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text.trim(),
       );
 
-      // Check role — redirect ikut role
       final prefs = await SharedPreferences.getInstance();
       final userStr = prefs.getString('user');
       final user = jsonDecode(userStr!);
@@ -140,7 +140,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
 
-              // Email field
+              // Email
               const Text(
                 'Email',
                 style: TextStyle(
@@ -163,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Password field
+              // Password
               const Text(
                 'Password',
                 style: TextStyle(
@@ -210,8 +210,37 @@ class _LoginScreenState extends State<LoginScreen> {
                             strokeWidth: 2,
                           ),
                         )
-                      : const Text('Log Masuk'),
+                      : const Text('Log Masuk', style: TextStyle(fontSize: 16)),
                 ),
+              ),
+              const SizedBox(height: 16),
+
+              // Register link
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Belum ada akaun? ',
+                    style: TextStyle(color: AppColors.subtext),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const RegisterScreen(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Daftar Sekarang',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
