@@ -253,8 +253,13 @@ export default function TenantsPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-500">
                     {new Date(
-                      tenant.created_at
-                    ).toLocaleDateString('ms-MY')}
+                     tenant.created_at
+                      ).toLocaleDateString('ms-MY', {
+                       timeZone: 'Asia/Kuala_Lumpur',
+                       day: '2-digit',
+                       month: '2-digit',
+                        year: 'numeric',
+})}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-3">

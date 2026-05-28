@@ -232,7 +232,7 @@ class _ReportScreenState extends State<ReportScreen> {
 
             // Table rows
             ..._sales.map((sale) {
-              final createdAt = DateTime.parse(sale['created_at']);
+              final createdAt = DateTime.parse(sale['created_at']).toLocal();
               final items = sale['sale_items'] as List;
               final total = (sale['total'] as num).toDouble();
               final method = sale['payment_method'] ?? 'cash';

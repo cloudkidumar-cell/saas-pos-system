@@ -14,7 +14,6 @@ class ReceiptScreen extends StatelessWidget {
   Future<void> _sharePDF(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Load setting dari SharedPreferences
     final namaKedai = prefs.getString('nama_kedai') ?? 'Kedai Saya';
     final noSsm = prefs.getString('no_ssm') ?? '';
     final alamat = prefs.getString('alamat') ?? '';
@@ -25,7 +24,9 @@ class ReceiptScreen extends StatelessWidget {
 
     final pdf = pw.Document();
     final items = sale['sale_items'] as List;
-    final createdAt = DateTime.parse(sale['created_at']);
+
+    // Convert UTC to local Malaysia time
+    final createdAt = DateTime.parse(sale['created_at']).toLocal();
     final dateFormatter = DateFormat('dd/MM/yyyy hh:mm a');
     final paymentMethod = sale['payment_method'] ?? 'cash';
     final cashReceived = sale['cash_received'];
@@ -50,22 +51,17 @@ class ReceiptScreen extends StatelessWidget {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
-            // Nama kedai
             pw.Text(
               namaKedai,
               style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
               textAlign: pw.TextAlign.center,
             ),
-
-            // No SSM
             if (noSsm.isNotEmpty)
               pw.Text(
                 'SSM: $noSsm',
                 style: const pw.TextStyle(fontSize: 9),
                 textAlign: pw.TextAlign.center,
               ),
-
-            // Alamat
             if (alamat.isNotEmpty)
               pw.Padding(
                 padding: const pw.EdgeInsets.only(top: 2),
@@ -75,14 +71,11 @@ class ReceiptScreen extends StatelessWidget {
                   textAlign: pw.TextAlign.center,
                 ),
               ),
-
             pw.SizedBox(height: 4),
             pw.Text(
               '--------------------------------',
               style: const pw.TextStyle(fontSize: 9),
             ),
-
-            // Receipt title
             pw.Text(
               'RECEIPT',
               style: pw.TextStyle(
@@ -91,19 +84,15 @@ class ReceiptScreen extends StatelessWidget {
                 letterSpacing: 2,
               ),
             ),
-
             pw.Text(
               dateFormatter.format(createdAt),
               style: const pw.TextStyle(fontSize: 9),
             ),
-
             pw.Text(
               '--------------------------------',
               style: const pw.TextStyle(fontSize: 9),
             ),
             pw.SizedBox(height: 4),
-
-            // Items
             ...items.map((item) {
               final nama = item['products'] != null
                   ? item['products']['nama']
@@ -131,15 +120,12 @@ class ReceiptScreen extends StatelessWidget {
                 ),
               );
             }),
-
             pw.SizedBox(height: 4),
             pw.Text(
               '--------------------------------',
               style: const pw.TextStyle(fontSize: 9),
             ),
             pw.SizedBox(height: 4),
-
-            // Total
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
@@ -159,8 +145,6 @@ class ReceiptScreen extends StatelessWidget {
                 ),
               ],
             ),
-
-            // Payment method
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
@@ -171,8 +155,6 @@ class ReceiptScreen extends StatelessWidget {
                 ),
               ],
             ),
-
-            // Cash received
             if (paymentMethod == 'cash' && cashReceived != null)
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -184,8 +166,6 @@ class ReceiptScreen extends StatelessWidget {
                   ),
                 ],
               ),
-
-            // Baki
             if (paymentMethod == 'cash' && changeAmount != null)
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -206,44 +186,35 @@ class ReceiptScreen extends StatelessWidget {
                   ),
                 ],
               ),
-
             pw.SizedBox(height: 8),
             pw.Text(
               '-----------------------------------------',
               style: const pw.TextStyle(fontSize: 9),
             ),
             pw.SizedBox(height: 6),
-
-            // Footer message
             pw.Text(
               footer,
               style: const pw.TextStyle(fontSize: 10),
               textAlign: pw.TextAlign.center,
             ),
-
             pw.SizedBox(height: 6),
             pw.Text(
               '--------------------------------',
               style: const pw.TextStyle(fontSize: 9),
             ),
             pw.SizedBox(height: 6),
-
-            // No tel
             if (noTel.isNotEmpty)
               pw.Text(
                 'Tel: $noTel',
                 style: const pw.TextStyle(fontSize: 9),
                 textAlign: pw.TextAlign.center,
               ),
-
-            // Email
             if (emailKedai.isNotEmpty)
               pw.Text(
                 emailKedai,
                 style: const pw.TextStyle(fontSize: 9),
                 textAlign: pw.TextAlign.center,
               ),
-
             pw.SizedBox(height: 4),
             pw.Text(
               '--------------------------------',
@@ -281,7 +252,9 @@ class ReceiptScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = sale['sale_items'] as List;
     final total = (sale['total'] as num).toDouble();
-    final createdAt = DateTime.parse(sale['created_at']);
+
+    // Convert UTC to local Malaysia time
+    final createdAt = DateTime.parse(sale['created_at']).toLocal();
     final formatter = DateFormat('dd/MM/yyyy hh:mm a');
     final paymentMethod = sale['payment_method'] ?? 'cash';
     final cashReceived = sale['cash_received'];
@@ -362,7 +335,6 @@ class ReceiptScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Items section
                   const Text(
                     'Item Dibeli',
                     style: TextStyle(
@@ -372,7 +344,6 @@ class ReceiptScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-
                   ...items.map((item) {
                     final nama = item['products'] != null
                         ? item['products']['nama']
@@ -388,7 +359,7 @@ class ReceiptScreen extends StatelessWidget {
                           Container(
                             width: 6,
                             height: 6,
-                            decoration: BoxDecoration(
+                            decoration: const BoxDecoration(
                               color: AppColors.primary,
                               shape: BoxShape.circle,
                             ),
@@ -415,7 +386,6 @@ class ReceiptScreen extends StatelessWidget {
                       ),
                     );
                   }),
-
                   const Divider(height: 20),
 
                   // Total
@@ -480,7 +450,7 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Share PDF button
+            // Share PDF
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -492,7 +462,7 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // New sale button
+            // New sale
             SizedBox(
               width: double.infinity,
               height: 48,

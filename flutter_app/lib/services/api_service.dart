@@ -5,7 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 class ApiService {
   // Guna IP MacBook ko — bukan localhost
   // Flutter simulator tak boleh access localhost
-  static const String baseUrl = 'http://192.168.0.64:3000';
+  //static const String baseUrl = 'http://192.168.0.64:3000';
+  static const String baseUrl =
+      'https://saas-pos-system-production.up.railway.app';
 
   // Get token dari storage
   static Future<String?> getToken() async {
