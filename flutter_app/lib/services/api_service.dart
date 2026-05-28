@@ -112,6 +112,23 @@ class ApiService {
     }
   }
 
+  // GET EOD
+  static Future<Map<String, dynamic>> getEOD() async {
+    final headers = await getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/sales/eod'),
+      headers: headers,
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data['data'];
+    } else {
+      throw Exception(data['message']);
+    }
+  }
+
   // ADD CASHIER
   static Future<Map<String, dynamic>> addStaff(
     String email,

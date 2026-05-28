@@ -9,6 +9,7 @@ import 'scan_screen.dart';
 import 'cart_screen.dart';
 import 'staff_screen.dart';
 import 'login_screen.dart';
+import 'eod_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -166,18 +167,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
             ),
 
-      // Scan button
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const ScanScreen()),
-          );
-        },
-        icon: const Icon(Icons.qr_code_scanner),
-        label: const Text('Scan'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+      // Scan + EOD buttons
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // EOD button
+          FloatingActionButton(
+            heroTag: 'eod',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const EodScreen()),
+              );
+            },
+            backgroundColor: Colors.orange,
+            foregroundColor: Colors.white,
+            child: const Icon(Icons.summarize_outlined),
+          ),
+          const SizedBox(height: 12),
+
+          // Scan button
+          FloatingActionButton.extended(
+            heroTag: 'scan',
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ScanScreen()),
+              );
+            },
+            icon: const Icon(Icons.qr_code_scanner),
+            label: const Text('Scan'),
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+          ),
+        ],
       ),
     );
   }
