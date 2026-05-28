@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../config/theme.dart';
 
 class ReceiptScreen extends StatelessWidget {
   final Map<String, dynamic> sale;
@@ -10,58 +12,134 @@ class ReceiptScreen extends StatelessWidget {
   const ReceiptScreen({super.key, required this.sale});
 
   Future<void> _sharePDF(BuildContext context) async {
-    final pdf = pw.Document();
+    final prefs = await SharedPreferences.getInstance();
 
+    // Load setting dari SharedPreferences
+    final namaKedai = prefs.getString('nama_kedai') ?? 'Kedai Saya';
+    final noSsm = prefs.getString('no_ssm') ?? '';
+    final alamat = prefs.getString('alamat') ?? '';
+    final noTel = prefs.getString('no_tel') ?? '';
+    final emailKedai = prefs.getString('email_kedai') ?? '';
+    final footer =
+        prefs.getString('footer') ?? 'Your transaction has been completed';
+
+    final pdf = pw.Document();
     final items = sale['sale_items'] as List;
     final createdAt = DateTime.parse(sale['created_at']);
-    final formatter = DateFormat('dd/MM/yyyy hh:mm a');
+    final dateFormatter = DateFormat('dd/MM/yyyy hh:mm a');
+    final paymentMethod = sale['payment_method'] ?? 'cash';
+    final cashReceived = sale['cash_received'];
+    final changeAmount = sale['change_amount'];
+    final total = (sale['total'] as num).toDouble();
+
+    String paymentLabel(String method) {
+      switch (method) {
+        case 'qr_bank':
+          return 'QR Bank';
+        case 'tng':
+          return 'Touch n Go';
+        default:
+          return 'Tunai';
+      }
+    }
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.roll80,
+        margin: const pw.EdgeInsets.all(12),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
+            // Nama kedai
             pw.Text(
-              'RECEIPT',
-              style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold),
+              namaKedai,
+              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+              textAlign: pw.TextAlign.center,
             ),
+
+            // No SSM
+            if (noSsm.isNotEmpty)
+              pw.Text(
+                'SSM: $noSsm',
+                style: const pw.TextStyle(fontSize: 9),
+                textAlign: pw.TextAlign.center,
+              ),
+
+            // Alamat
+            if (alamat.isNotEmpty)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(top: 2),
+                child: pw.Text(
+                  alamat,
+                  style: const pw.TextStyle(fontSize: 9),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+
             pw.SizedBox(height: 4),
             pw.Text(
-              formatter.format(createdAt),
-              style: const pw.TextStyle(fontSize: 10),
+              '--------------------------------',
+              style: const pw.TextStyle(fontSize: 9),
             ),
-            pw.Divider(),
-            pw.SizedBox(height: 8),
+
+            // Receipt title
+            pw.Text(
+              'RECEIPT',
+              style: pw.TextStyle(
+                fontSize: 13,
+                fontWeight: pw.FontWeight.bold,
+                letterSpacing: 2,
+              ),
+            ),
+
+            pw.Text(
+              dateFormatter.format(createdAt),
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+
+            pw.Text(
+              '--------------------------------',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 4),
 
             // Items
             ...items.map((item) {
-              final product = item['products'];
+              final nama = item['products'] != null
+                  ? item['products']['nama']
+                  : item['nama'] ?? '-';
               final qty = item['quantity'];
               final harga = (item['harga'] as num).toDouble();
               final subtotal = qty * harga;
 
               return pw.Padding(
-                padding: const pw.EdgeInsets.only(bottom: 4),
+                padding: const pw.EdgeInsets.only(bottom: 3),
                 child: pw.Row(
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Expanded(
                       child: pw.Text(
-                        '${product['nama']} x$qty',
-                        style: const pw.TextStyle(fontSize: 11),
+                        '$nama x$qty',
+                        style: const pw.TextStyle(fontSize: 10),
                       ),
                     ),
                     pw.Text(
                       'RM ${subtotal.toStringAsFixed(2)}',
-                      style: const pw.TextStyle(fontSize: 11),
+                      style: const pw.TextStyle(fontSize: 10),
                     ),
                   ],
                 ),
               );
             }),
 
-            pw.Divider(),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '--------------------------------',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 4),
+
+            // Total
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
@@ -69,22 +147,113 @@ class ReceiptScreen extends StatelessWidget {
                   'TOTAL',
                   style: pw.TextStyle(
                     fontWeight: pw.FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
                 pw.Text(
-                  'RM ${(sale['total'] as num).toStringAsFixed(2)}',
+                  'RM ${total.toStringAsFixed(2)}',
                   style: pw.TextStyle(
                     fontWeight: pw.FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 12,
                   ),
                 ),
               ],
             ),
-            pw.SizedBox(height: 16),
+
+            // Payment method
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Bayaran', style: const pw.TextStyle(fontSize: 10)),
+                pw.Text(
+                  paymentLabel(paymentMethod),
+                  style: const pw.TextStyle(fontSize: 10),
+                ),
+              ],
+            ),
+
+            // Cash received
+            if (paymentMethod == 'cash' && cashReceived != null)
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Diterima', style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text(
+                    'RM ${(cashReceived as num).toStringAsFixed(2)}',
+                    style: const pw.TextStyle(fontSize: 10),
+                  ),
+                ],
+              ),
+
+            // Baki
+            if (paymentMethod == 'cash' && changeAmount != null)
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Baki',
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                  pw.Text(
+                    'RM ${(changeAmount as num).toStringAsFixed(2)}',
+                    style: pw.TextStyle(
+                      fontWeight: pw.FontWeight.bold,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+
+            pw.SizedBox(height: 8),
             pw.Text(
-              'Terima Kasih!',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+              '-----------------------------------------',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 6),
+
+            // Footer message
+            pw.Text(
+              footer,
+              style: const pw.TextStyle(fontSize: 10),
+              textAlign: pw.TextAlign.center,
+            ),
+
+            pw.SizedBox(height: 6),
+            pw.Text(
+              '--------------------------------',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 6),
+
+            // No tel
+            if (noTel.isNotEmpty)
+              pw.Text(
+                'Tel: $noTel',
+                style: const pw.TextStyle(fontSize: 9),
+                textAlign: pw.TextAlign.center,
+              ),
+
+            // Email
+            if (emailKedai.isNotEmpty)
+              pw.Text(
+                emailKedai,
+                style: const pw.TextStyle(fontSize: 9),
+                textAlign: pw.TextAlign.center,
+              ),
+
+            pw.SizedBox(height: 4),
+            pw.Text(
+              '--------------------------------',
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text(
+              'Thank You',
+              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+              textAlign: pw.TextAlign.center,
             ),
           ],
         ),
@@ -97,151 +266,295 @@ class ReceiptScreen extends StatelessWidget {
     );
   }
 
+  String _paymentLabel(String method) {
+    switch (method) {
+      case 'qr_bank':
+        return 'QR Bank';
+      case 'tng':
+        return 'Touch n Go';
+      default:
+        return 'Tunai';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = sale['sale_items'] as List;
     final total = (sale['total'] as num).toDouble();
     final createdAt = DateTime.parse(sale['created_at']);
     final formatter = DateFormat('dd/MM/yyyy hh:mm a');
+    final paymentMethod = sale['payment_method'] ?? 'cash';
+    final cashReceived = sale['cash_received'];
+    final changeAmount = sale['change_amount'];
 
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Receipt'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0,
+        title: const Text('Resit'),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            onPressed: () => _sharePDF(context),
+            icon: const Icon(Icons.share_outlined),
+            tooltip: 'Share PDF',
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Success icon
+            // Success card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 children: [
-                  const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      color: AppColors.successLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.check,
+                      color: AppColors.success,
+                      size: 32,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'Pembayaran Berjaya',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.text,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     formatter.format(createdAt),
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.subtext,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 12),
 
-            // Items
+            // Receipt detail card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: AppColors.card,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Items section
                   const Text(
-                    'Item',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                    'Item Dibeli',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: AppColors.text,
+                    ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
+
                   ...items.map((item) {
-                    final product = item['products'];
+                    final nama = item['products'] != null
+                        ? item['products']['nama']
+                        : item['nama'] ?? '-';
                     final qty = item['quantity'];
                     final harga = (item['harga'] as num).toDouble();
                     final subtotal = qty * harga;
 
                     return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.only(bottom: 6),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              '${product['nama']} x$qty',
-                              style: const TextStyle(fontSize: 14),
+                              '$nama x$qty',
+                              style: const TextStyle(
+                                color: AppColors.text,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
                           Text(
                             'RM ${subtotal.toStringAsFixed(2)}',
                             style: const TextStyle(
-                              fontSize: 14,
                               fontWeight: FontWeight.w500,
+                              color: AppColors.text,
+                              fontSize: 14,
                             ),
                           ),
                         ],
                       ),
                     );
                   }),
-                  const Divider(),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Total',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      Text(
-                        'RM ${total.toStringAsFixed(2)}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.blue,
-                        ),
-                      ),
-                    ],
+
+                  const Divider(height: 20),
+
+                  // Total
+                  _ReceiptRow(
+                    label: 'Total',
+                    value: 'RM ${total.toStringAsFixed(2)}',
+                    bold: true,
+                    valueColor: AppColors.primary,
+                    fontSize: 16,
                   ),
+                  const SizedBox(height: 8),
+
+                  // Payment method
+                  _ReceiptRow(
+                    label: 'Kaedah Bayaran',
+                    value: _paymentLabel(paymentMethod),
+                  ),
+
+                  // Cash details
+                  if (paymentMethod == 'cash' && cashReceived != null) ...[
+                    const SizedBox(height: 4),
+                    _ReceiptRow(
+                      label: 'Diterima',
+                      value: 'RM ${(cashReceived as num).toStringAsFixed(2)}',
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.successLight,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: AppColors.success.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Baki',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppColors.success,
+                            ),
+                          ),
+                          Text(
+                            'RM ${(changeAmount as num).toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
             const SizedBox(height: 24),
 
-            // Buttons
+            // Share PDF button
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: () => _sharePDF(context),
-                icon: const Icon(Icons.share),
-                label: const Text('Share PDF Receipt'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
+                icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                label: const Text('Share PDF Resit'),
               ),
             ),
             const SizedBox(height: 12),
+
+            // New sale button
             SizedBox(
               width: double.infinity,
               height: 48,
               child: OutlinedButton(
                 onPressed: () {
-                  // Balik ke home
                   Navigator.of(context).popUntil((route) => route.isFirst);
                 },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: const Text('Sale Baru'),
               ),
             ),
+            const SizedBox(height: 32),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ReceiptRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool bold;
+  final Color? valueColor;
+  final double fontSize;
+
+  const _ReceiptRow({
+    required this.label,
+    required this.value,
+    this.bold = false,
+    this.valueColor,
+    this.fontSize = 14,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: bold ? AppColors.text : AppColors.subtext,
+            fontWeight: bold ? FontWeight.bold : FontWeight.normal,
+            fontSize: fontSize,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: valueColor ?? AppColors.text,
+            fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+            fontSize: fontSize,
+          ),
+        ),
+      ],
     );
   }
 }

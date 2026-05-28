@@ -6,9 +6,13 @@ const supabase = require('../config/supabase');
 const createSale = async (req, res) => {
   try {
     const { tenant_id, user_id } = req.user;
-    const { items } = req.body;
+    const {
+      items,
+      payment_method,
+      cash_received,
+      change
+    } = req.body;
 
-    // Validate
     if (!items || items.length === 0) {
       return res.status(400).json({
         success: false,
@@ -28,7 +32,10 @@ const createSale = async (req, res) => {
       .insert({
         tenant_id,
         user_id,
-        total
+        total,
+        payment_method: payment_method || 'cash',
+        cash_received: cash_received || null,
+        change_amount: change || null
       })
       .select()
       .single();
@@ -37,32 +44,34 @@ const createSale = async (req, res) => {
 
     // Create sale items + kurangkan stok
     for (const item of items) {
-      // Insert sale item
-      const { error: itemError } = await supabase
+      await supabase
         .from('sale_items')
         .insert({
           sale_id: sale.id,
-          product_id: item.product_id,
+          product_id: item.product_id || null,
           quantity: item.quantity,
-          harga: item.harga
+          harga: item.harga,
+          nama: item.nama
         });
 
-      if (itemError) throw itemError;
+      // Kurangkan stok kalau ada product_id
+      if (item.product_id) {
+        const { data: product } = await supabase
+          .from('products')
+          .select('stok')
+          .eq('id', item.product_id)
+          .single();
 
-      // Kurangkan stok
-      const { data: product } = await supabase
-        .from('products')
-        .select('stok')
-        .eq('id', item.product_id)
-        .single();
-
-      await supabase
-        .from('products')
-        .update({ stok: product.stok - item.quantity })
-        .eq('id', item.product_id);
+        if (product) {
+          await supabase
+            .from('products')
+            .update({ stok: product.stok - item.quantity })
+            .eq('id', item.product_id);
+        }
+      }
     }
 
-    // Get sale dengan items sekali
+    // Get complete sale
     const { data: completeSale } = await supabase
       .from('sales')
       .select(`

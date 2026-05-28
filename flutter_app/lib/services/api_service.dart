@@ -182,13 +182,21 @@ class ApiService {
 
   // CREATE SALE
   static Future<Map<String, dynamic>> createSale(
-    List<Map<String, dynamic>> items,
-  ) async {
+    List<Map<String, dynamic>> items, {
+    String? paymentMethod,
+    double? cashReceived,
+    double? change,
+  }) async {
     final headers = await getHeaders();
     final response = await http.post(
       Uri.parse('$baseUrl/sales'),
       headers: headers,
-      body: jsonEncode({'items': items}),
+      body: jsonEncode({
+        'items': items,
+        'payment_method': paymentMethod,
+        'cash_received': cashReceived,
+        'change': change,
+      }),
     );
 
     final data = jsonDecode(response.body);
@@ -196,6 +204,39 @@ class ApiService {
     if (response.statusCode == 201) {
       return data['data'];
     } else {
+      throw Exception(data['message']);
+    }
+  }
+
+  // GET SALES BY DATE
+  static Future<List<dynamic>> getSalesByDate(String date) async {
+    final headers = await getHeaders();
+    final response = await http.get(
+      Uri.parse('$baseUrl/sales?date=$date'),
+      headers: headers,
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 200) {
+      return data['data'];
+    } else {
+      throw Exception(data['message']);
+    }
+  }
+
+  // RESTOCK PRODUCT
+  static Future<void> restockProduct(String id, int quantity) async {
+    final headers = await getHeaders();
+    final response = await http.put(
+      Uri.parse('$baseUrl/products/$id/restock'),
+      headers: headers,
+      body: jsonEncode({'quantity': quantity}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode != 200) {
       throw Exception(data['message']);
     }
   }
