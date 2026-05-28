@@ -70,15 +70,14 @@ export default function TenantsPage() {
       t.nama_kedai
         .toLowerCase()
         .includes(search.toLowerCase()) ||
-      t.email.toLowerCase().includes(search.toLowerCase());
+      t.email
+        .toLowerCase()
+        .includes(search.toLowerCase());
     return matchFilter && matchSearch;
   });
 
   const statusBadge = (status: string) => {
-    const map: Record
-      string,
-      { label: string; cls: string }
-    > = {
+    const map: { [key: string]: { label: string; cls: string } } = {
       pending: {
         label: 'Pending',
         cls: 'bg-yellow-100 text-yellow-700',
@@ -111,8 +110,9 @@ export default function TenantsPage() {
 
   const counts = {
     all: tenants.length,
-    pending: tenants.filter((t) => t.status === 'pending')
-      .length,
+    pending: tenants.filter(
+      (t) => t.status === 'pending'
+    ).length,
     approved: tenants.filter(
       (t) => t.status === 'approved'
     ).length,
@@ -138,42 +138,30 @@ export default function TenantsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        {[
-          {
-            label: 'Semua',
-            value: counts.all,
-            color: 'text-blue-600',
-          },
-          {
-            label: 'Pending',
-            value: counts.pending,
-            color: 'text-yellow-600',
-          },
-          {
-            label: 'Aktif',
-            value: counts.approved,
-            color: 'text-green-600',
-          },
-          {
-            label: 'Digantung',
-            value: counts.suspended,
-            color: 'text-orange-600',
-          },
-        ].map((stat) => (
-          <div
-            key={stat.label}
-            className="bg-white rounded-lg p-4 shadow-sm"
-          >
-            <p className="text-sm text-gray-500">
-              {stat.label}
-            </p>
-            <p
-              className={`text-2xl font-bold ${stat.color}`}
-            >
-              {stat.value}
-            </p>
-          </div>
-        ))}
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-gray-500">Semua</p>
+          <p className="text-2xl font-bold text-blue-600">
+            {counts.all}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-gray-500">Pending</p>
+          <p className="text-2xl font-bold text-yellow-600">
+            {counts.pending}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-gray-500">Aktif</p>
+          <p className="text-2xl font-bold text-green-600">
+            {counts.approved}
+          </p>
+        </div>
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <p className="text-sm text-gray-500">Digantung</p>
+          <p className="text-2xl font-bold text-orange-600">
+            {counts.suspended}
+          </p>
+        </div>
       </div>
 
       {/* Filter + Search */}
@@ -210,10 +198,10 @@ export default function TenantsPage() {
 
       {/* Pending alert */}
       {counts.pending > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 flex items-center gap-2">
-          <span className="text-yellow-600 text-sm font-medium">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+          <p className="text-yellow-700 text-sm font-medium">
             ⚠️ {counts.pending} tenant menunggu kelulusan
-          </span>
+          </p>
         </div>
       )}
 
