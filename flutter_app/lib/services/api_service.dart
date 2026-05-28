@@ -94,4 +94,24 @@ class ApiService {
       throw Exception(data['message']);
     }
   }
+
+  // CREATE SALE
+  static Future<Map<String, dynamic>> createSale(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final headers = await getHeaders();
+    final response = await http.post(
+      Uri.parse('$baseUrl/sales'),
+      headers: headers,
+      body: jsonEncode({'items': items}),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode == 201) {
+      return data['data'];
+    } else {
+      throw Exception(data['message']);
+    }
+  }
 }

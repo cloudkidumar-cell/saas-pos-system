@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/cart_provider.dart';
+import '../services/api_service.dart';
+import 'receipt_screen.dart';
 
 class CartScreen extends StatelessWidget {
   const CartScreen({super.key});
@@ -172,13 +174,43 @@ class CartScreen extends StatelessWidget {
                         width: double.infinity,
                         height: 48,
                         child: ElevatedButton(
-                          onPressed: () {
-                            // Checkout — kita bina next
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Checkout coming soon...'),
-                              ),
-                            );
+                          onPressed: () async {
+                            try {
+                              // Prepare items
+                              final items = cart.items
+                                  .map(
+                                    (item) => {
+                                      'product_id': item.product.id,
+                                      'quantity': item.quantity,
+                                      'harga': item.product.harga,
+                                    },
+                                  )
+                                  .toList();
+
+                              // Create sale
+                              final sale = await ApiService.createSale(items);
+
+                              // Clear cart
+                              cart.clearCart();
+
+                              if (context.mounted) {
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ReceiptScreen(sale: sale),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(e.toString()),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            }
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue,
