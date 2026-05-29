@@ -276,4 +276,8 @@ class ApiService {
     }
     return DateTime.parse(dateStr).toLocal();
   }
+
+  static const String supabaseUrl = 'https://gpmmgfibmbmfyvnmmdge.supabase.co';
+  static const String supabaseAnonKey =
+      'sb_publishable_gBgZoL-aD07KZAP8WWnDlQ_bfgzv0j-';
 }

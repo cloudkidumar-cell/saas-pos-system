@@ -1,9 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../config/theme.dart';
 import '../utils/date_helper.dart';
@@ -15,9 +16,7 @@ class ReceiptScreen extends StatelessWidget {
 
   static const String _cmsBaseUrl = 'https://saas-pos-system-tau.vercel.app';
 
-  Future<void> _sharePDF(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-
+  Future<Uint8List> _generatePDFBytes(SharedPreferences prefs) async {
     final namaKedai = prefs.getString('nama_kedai') ?? 'Kedai Saya';
     final noSsm = prefs.getString('no_ssm') ?? '';
     final alamat = prefs.getString('alamat') ?? '';
@@ -46,6 +45,10 @@ class ReceiptScreen extends StatelessWidget {
       }
     }
 
+    final baseStyle = pw.TextStyle(font: pw.Font.helvetica(), fontSize: 10);
+
+    final boldStyle = pw.TextStyle(font: pw.Font.helveticaBold(), fontSize: 10);
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.roll80,
@@ -55,13 +58,13 @@ class ReceiptScreen extends StatelessWidget {
           children: [
             pw.Text(
               namaKedai,
-              style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+              style: pw.TextStyle(font: pw.Font.helveticaBold(), fontSize: 14),
               textAlign: pw.TextAlign.center,
             ),
             if (noSsm.isNotEmpty)
               pw.Text(
                 'SSM: $noSsm',
-                style: const pw.TextStyle(fontSize: 9),
+                style: baseStyle.copyWith(fontSize: 9),
                 textAlign: pw.TextAlign.center,
               ),
             if (alamat.isNotEmpty)
@@ -69,30 +72,26 @@ class ReceiptScreen extends StatelessWidget {
                 padding: const pw.EdgeInsets.only(top: 2),
                 child: pw.Text(
                   alamat,
-                  style: const pw.TextStyle(fontSize: 9),
+                  style: baseStyle.copyWith(fontSize: 9),
                   textAlign: pw.TextAlign.center,
                 ),
               ),
             pw.SizedBox(height: 4),
             pw.Text(
               '--------------------------------',
-              style: const pw.TextStyle(fontSize: 9),
+              style: baseStyle.copyWith(fontSize: 9),
             ),
             pw.Text(
               'RECEIPT',
-              style: pw.TextStyle(
-                fontSize: 13,
-                fontWeight: pw.FontWeight.bold,
-                letterSpacing: 2,
-              ),
+              style: boldStyle.copyWith(fontSize: 13, letterSpacing: 2),
             ),
             pw.Text(
               dateFormatter.format(createdAt),
-              style: const pw.TextStyle(fontSize: 9),
+              style: baseStyle.copyWith(fontSize: 9),
             ),
             pw.Text(
               '--------------------------------',
-              style: const pw.TextStyle(fontSize: 9),
+              style: baseStyle.copyWith(fontSize: 9),
             ),
             pw.SizedBox(height: 4),
             ...items.map((item) {
@@ -109,14 +108,11 @@ class ReceiptScreen extends StatelessWidget {
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Expanded(
-                      child: pw.Text(
-                        '$nama x$qty',
-                        style: const pw.TextStyle(fontSize: 10),
-                      ),
+                      child: pw.Text('$nama x$qty', style: baseStyle),
                     ),
                     pw.Text(
                       'RM ${subtotal.toStringAsFixed(2)}',
-                      style: const pw.TextStyle(fontSize: 10),
+                      style: baseStyle,
                     ),
                   ],
                 ),
@@ -125,46 +121,34 @@ class ReceiptScreen extends StatelessWidget {
             pw.SizedBox(height: 4),
             pw.Text(
               '--------------------------------',
-              style: const pw.TextStyle(fontSize: 9),
+              style: baseStyle.copyWith(fontSize: 9),
             ),
             pw.SizedBox(height: 4),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(
-                  'TOTAL',
-                  style: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
+                pw.Text('TOTAL', style: boldStyle.copyWith(fontSize: 12)),
                 pw.Text(
                   'RM ${total.toStringAsFixed(2)}',
-                  style: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 12,
-                  ),
+                  style: boldStyle.copyWith(fontSize: 12),
                 ),
               ],
             ),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('Bayaran', style: const pw.TextStyle(fontSize: 10)),
-                pw.Text(
-                  paymentLabel(paymentMethod),
-                  style: const pw.TextStyle(fontSize: 10),
-                ),
+                pw.Text('Bayaran', style: baseStyle),
+                pw.Text(paymentLabel(paymentMethod), style: baseStyle),
               ],
             ),
             if (paymentMethod == 'cash' && cashReceived != null)
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text('Diterima', style: const pw.TextStyle(fontSize: 10)),
+                  pw.Text('Diterima', style: baseStyle),
                   pw.Text(
                     'RM ${(cashReceived as num).toStringAsFixed(2)}',
-                    style: const pw.TextStyle(fontSize: 10),
+                    style: baseStyle,
                   ),
                 ],
               ),
@@ -172,60 +156,47 @@ class ReceiptScreen extends StatelessWidget {
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
-                  pw.Text(
-                    'Baki',
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
+                  pw.Text('Baki', style: boldStyle.copyWith(fontSize: 11)),
                   pw.Text(
                     'RM ${(changeAmount as num).toStringAsFixed(2)}',
-                    style: pw.TextStyle(
-                      fontWeight: pw.FontWeight.bold,
-                      fontSize: 11,
-                    ),
+                    style: boldStyle.copyWith(fontSize: 11),
                   ),
                 ],
               ),
             pw.SizedBox(height: 8),
             pw.Text(
-              '-----------------------------------------',
-              style: const pw.TextStyle(fontSize: 9),
+              '--------------------------------',
+              style: baseStyle.copyWith(fontSize: 9),
             ),
             pw.SizedBox(height: 6),
-            pw.Text(
-              footer,
-              style: const pw.TextStyle(fontSize: 10),
-              textAlign: pw.TextAlign.center,
-            ),
+            pw.Text(footer, style: baseStyle, textAlign: pw.TextAlign.center),
             pw.SizedBox(height: 6),
             pw.Text(
               '--------------------------------',
-              style: const pw.TextStyle(fontSize: 9),
+              style: baseStyle.copyWith(fontSize: 9),
             ),
             pw.SizedBox(height: 6),
             if (noTel.isNotEmpty)
               pw.Text(
                 'Tel: $noTel',
-                style: const pw.TextStyle(fontSize: 9),
+                style: baseStyle.copyWith(fontSize: 9),
                 textAlign: pw.TextAlign.center,
               ),
             if (emailKedai.isNotEmpty)
               pw.Text(
                 emailKedai,
-                style: const pw.TextStyle(fontSize: 9),
+                style: baseStyle.copyWith(fontSize: 9),
                 textAlign: pw.TextAlign.center,
               ),
             pw.SizedBox(height: 4),
             pw.Text(
               '--------------------------------',
-              style: const pw.TextStyle(fontSize: 9),
+              style: baseStyle.copyWith(fontSize: 9),
             ),
             pw.SizedBox(height: 4),
             pw.Text(
               'Thank You',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11),
+              style: boldStyle.copyWith(fontSize: 11),
               textAlign: pw.TextAlign.center,
             ),
           ],
@@ -233,13 +204,231 @@ class ReceiptScreen extends StatelessWidget {
       ),
     );
 
-    await Printing.sharePdf(
-      bytes: await pdf.save(),
-      filename: 'receipt-${sale['id']}.pdf',
+    return await pdf.save();
+  }
+
+  Future<String> _uploadPDFToStorage(Uint8List bytes) async {
+    try {
+      final supabase = Supabase.instance.client;
+      final fileName =
+          'receipt-${sale['id']}-${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+      debugPrint('Uploading: $fileName');
+      debugPrint('Size: ${bytes.length} bytes');
+
+      await supabase.storage
+          .from('receipts')
+          .uploadBinary(
+            fileName,
+            bytes,
+            fileOptions: const FileOptions(
+              contentType: 'application/pdf',
+              upsert: true,
+            ),
+          );
+
+      final publicUrl = supabase.storage
+          .from('receipts')
+          .getPublicUrl(fileName);
+
+      debugPrint('URL: $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      debugPrint('Upload error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> _sharePDFViaWhatsApp(BuildContext context) async {
+    final phoneController = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          bool isLoading = false;
+          String errorMsg = '';
+
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.picture_as_pdf_outlined,
+                        color: Color(0xFF25D366),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Share PDF via WhatsApp',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.text,
+                          ),
+                        ),
+                        Text(
+                          'Customer dapat PDF resit',
+                          style: TextStyle(
+                            color: AppColors.subtext,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'No Telefon Customer',
+                    hintText: '011-12345678',
+                    prefixIcon: Icon(Icons.phone_outlined),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Format: 011-12345678',
+                  style: TextStyle(color: AppColors.subtext, fontSize: 11),
+                ),
+                if (errorMsg.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.dangerLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        errorMsg,
+                        style: const TextStyle(
+                          color: AppColors.danger,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: isLoading
+                        ? null
+                        : () async {
+                            var phone = phoneController.text
+                                .trim()
+                                .replaceAll('-', '')
+                                .replaceAll(' ', '');
+
+                            if (phone.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Sila masukkan no telefon'),
+                                  backgroundColor: AppColors.danger,
+                                ),
+                              );
+                              return;
+                            }
+
+                            if (phone.startsWith('0')) {
+                              phone = '6$phone';
+                            }
+                            if (!phone.startsWith('6')) {
+                              phone = '60$phone';
+                            }
+
+                            setState(() {
+                              isLoading = true;
+                              errorMsg = '';
+                            });
+
+                            try {
+                              final prefs =
+                                  await SharedPreferences.getInstance();
+                              final bytes = await _generatePDFBytes(prefs);
+                              final pdfUrl = await _uploadPDFToStorage(bytes);
+
+                              final message =
+                                  'Terima kasih kerana membeli!\n\nMuat turun resit PDF:\n$pdfUrl';
+                              final waUrl =
+                                  'https://wa.me/$phone?text=${Uri.encodeComponent(message)}';
+
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                              }
+
+                              if (await canLaunchUrl(Uri.parse(waUrl))) {
+                                await launchUrl(
+                                  Uri.parse(waUrl),
+                                  mode: LaunchMode.externalApplication,
+                                );
+                              }
+                            } catch (e) {
+                              setState(() {
+                                isLoading = false;
+                                errorMsg = 'Error: ${e.toString()}';
+                              });
+                            }
+                          },
+                    icon: isLoading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : const Icon(Icons.send, size: 18),
+                    label: Text(isLoading ? 'Menghantar...' : 'Hantar PDF'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
-  Future<void> _sendWhatsApp(BuildContext context) async {
+  Future<void> _shareLinkViaWhatsApp(BuildContext context) async {
     final phoneController = TextEditingController();
 
     await showModalBottomSheet(
@@ -260,7 +449,6 @@ class ReceiptScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
                 Container(
@@ -271,7 +459,7 @@ class ReceiptScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(
-                    Icons.chat_outlined,
+                    Icons.link,
                     color: Color(0xFF25D366),
                     size: 20,
                   ),
@@ -281,7 +469,7 @@ class ReceiptScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Hantar Resit via WhatsApp',
+                      'Hantar Link via WhatsApp',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -289,7 +477,7 @@ class ReceiptScreen extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Customer boleh tengok resit online',
+                      'Customer buka resit dalam browser',
                       style: TextStyle(color: AppColors.subtext, fontSize: 12),
                     ),
                   ],
@@ -297,8 +485,6 @@ class ReceiptScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 20),
-
-            // Phone field
             TextField(
               controller: phoneController,
               keyboardType: TextInputType.phone,
@@ -311,12 +497,10 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Format: 011-12345678 atau 601112345678',
+              'Format: 011-12345678',
               style: TextStyle(color: AppColors.subtext, fontSize: 11),
             ),
             const SizedBox(height: 24),
-
-            // Send button
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -337,7 +521,6 @@ class ReceiptScreen extends StatelessWidget {
                     return;
                   }
 
-                  // Format phone number
                   if (phone.startsWith('0')) {
                     phone = '6$phone';
                   }
@@ -345,13 +528,9 @@ class ReceiptScreen extends StatelessWidget {
                     phone = '60$phone';
                   }
 
-                  // Receipt web link
                   final receiptUrl = '$_cmsBaseUrl/receipt/${sale['id']}';
-
-                  // WhatsApp message
                   final message =
-                      'Terima kasih kerana membeli! 🛍️\n\nSila klik link untuk melihat resit anda:\n$receiptUrl';
-
+                      'Terima kasih kerana membeli!\n\nSila klik untuk melihat resit:\n$receiptUrl';
                   final waUrl =
                       'https://wa.me/$phone?text=${Uri.encodeComponent(message)}';
 
@@ -362,19 +541,10 @@ class ReceiptScreen extends StatelessWidget {
                       Uri.parse(waUrl),
                       mode: LaunchMode.externalApplication,
                     );
-                  } else {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('WhatsApp tidak dijumpai'),
-                          backgroundColor: AppColors.danger,
-                        ),
-                      );
-                    }
                   }
                 },
                 icon: const Icon(Icons.send, size: 18),
-                label: const Text('Buka WhatsApp'),
+                label: const Text('Hantar Link'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF25D366),
                   foregroundColor: Colors.white,
@@ -416,13 +586,6 @@ class ReceiptScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Resit'),
         automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            onPressed: () => _sharePDF(context),
-            icon: const Icon(Icons.share_outlined),
-            tooltip: 'Share PDF',
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -539,7 +702,6 @@ class ReceiptScreen extends StatelessWidget {
                   }),
                   const Divider(height: 20),
 
-                  // Total
                   _ReceiptRow(
                     label: 'Total',
                     value: 'RM ${total.toStringAsFixed(2)}',
@@ -548,14 +710,11 @@ class ReceiptScreen extends StatelessWidget {
                     fontSize: 16,
                   ),
                   const SizedBox(height: 8),
-
-                  // Payment method
                   _ReceiptRow(
                     label: 'Kaedah Bayaran',
                     value: _paymentLabel(paymentMethod),
                   ),
 
-                  // Cash details
                   if (paymentMethod == 'cash' && cashReceived != null) ...[
                     const SizedBox(height: 4),
                     _ReceiptRow(
@@ -601,26 +760,33 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Share PDF button
+            // Share PDF via WhatsApp
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: () => _sharePDF(context),
+                onPressed: () => _sharePDFViaWhatsApp(context),
                 icon: const Icon(Icons.picture_as_pdf_outlined, size: 18),
-                label: const Text('Share PDF Resit'),
+                label: const Text('Share PDF via WhatsApp'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 12),
 
-            // WhatsApp button
+            // Share Link via WhatsApp
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
-                onPressed: () => _sendWhatsApp(context),
-                icon: const Icon(Icons.chat_outlined, size: 18),
-                label: const Text('Hantar via WhatsApp'),
+                onPressed: () => _shareLinkViaWhatsApp(context),
+                icon: const Icon(Icons.link, size: 18),
+                label: const Text('Hantar Link via WhatsApp'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF25D366),
                   foregroundColor: Colors.white,
@@ -632,7 +798,7 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // New sale button
+            // Sale Baru
             SizedBox(
               width: double.infinity,
               height: 48,
