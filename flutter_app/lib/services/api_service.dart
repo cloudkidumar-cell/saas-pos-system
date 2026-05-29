@@ -267,4 +267,13 @@ class ApiService {
       throw Exception(data['message']);
     }
   }
+
+  // Helper — parse UTC datetime dari database
+  static DateTime parseDateTime(String dateStr) {
+    // Tambah Z kalau takde — supaya Flutter tahu ini UTC
+    if (!dateStr.endsWith('Z') && !dateStr.contains('+')) {
+      dateStr = '${dateStr}Z';
+    }
+    return DateTime.parse(dateStr).toLocal();
+  }
 }

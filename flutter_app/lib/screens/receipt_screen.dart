@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/theme.dart';
+import '../utils/date_helper.dart';
 
 class ReceiptScreen extends StatelessWidget {
   final Map<String, dynamic> sale;
@@ -24,9 +25,7 @@ class ReceiptScreen extends StatelessWidget {
 
     final pdf = pw.Document();
     final items = sale['sale_items'] as List;
-
-    // Convert UTC to local Malaysia time
-    final createdAt = DateTime.parse(sale['created_at']).toLocal();
+    final createdAt = parseDateTime(sale['created_at']);
     final dateFormatter = DateFormat('dd/MM/yyyy hh:mm a');
     final paymentMethod = sale['payment_method'] ?? 'cash';
     final cashReceived = sale['cash_received'];
@@ -252,9 +251,7 @@ class ReceiptScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = sale['sale_items'] as List;
     final total = (sale['total'] as num).toDouble();
-
-    // Convert UTC to local Malaysia time
-    final createdAt = DateTime.parse(sale['created_at']).toLocal();
+    final createdAt = parseDateTime(sale['created_at']);
     final formatter = DateFormat('dd/MM/yyyy hh:mm a');
     final paymentMethod = sale['payment_method'] ?? 'cash';
     final cashReceived = sale['cash_received'];
@@ -277,7 +274,6 @@ class ReceiptScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Success card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -323,7 +319,6 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Receipt detail card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -388,7 +383,6 @@ class ReceiptScreen extends StatelessWidget {
                   }),
                   const Divider(height: 20),
 
-                  // Total
                   _ReceiptRow(
                     label: 'Total',
                     value: 'RM ${total.toStringAsFixed(2)}',
@@ -397,14 +391,11 @@ class ReceiptScreen extends StatelessWidget {
                     fontSize: 16,
                   ),
                   const SizedBox(height: 8),
-
-                  // Payment method
                   _ReceiptRow(
                     label: 'Kaedah Bayaran',
                     value: _paymentLabel(paymentMethod),
                   ),
 
-                  // Cash details
                   if (paymentMethod == 'cash' && cashReceived != null) ...[
                     const SizedBox(height: 4),
                     _ReceiptRow(
@@ -450,7 +441,6 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Share PDF
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -462,7 +452,6 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // New sale
             SizedBox(
               width: double.infinity,
               height: 48,

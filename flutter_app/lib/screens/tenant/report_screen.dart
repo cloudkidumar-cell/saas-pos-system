@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
+import '../../utils/date_helper.dart';
 import '../receipt_screen.dart';
 
 class ReportScreen extends StatefulWidget {
@@ -82,7 +83,6 @@ class _ReportScreenState extends State<ReportScreen> {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            // Header
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
@@ -107,8 +107,6 @@ class _ReportScreenState extends State<ReportScreen> {
             pw.SizedBox(height: 8),
             pw.Divider(),
             pw.SizedBox(height: 8),
-
-            // Summary
             pw.Row(
               children: [
                 pw.Expanded(
@@ -175,8 +173,6 @@ class _ReportScreenState extends State<ReportScreen> {
               ],
             ),
             pw.SizedBox(height: 16),
-
-            // Table header
             pw.Container(
               padding: const pw.EdgeInsets.symmetric(
                 horizontal: 8,
@@ -229,10 +225,8 @@ class _ReportScreenState extends State<ReportScreen> {
                 ],
               ),
             ),
-
-            // Table rows
             ..._sales.map((sale) {
-              final createdAt = DateTime.parse(sale['created_at']).toLocal();
+              final createdAt = parseDateTime(sale['created_at']);
               final items = sale['sale_items'] as List;
               final total = (sale['total'] as num).toDouble();
               final method = sale['payment_method'] ?? 'cash';
@@ -298,11 +292,8 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               );
             }),
-
             pw.SizedBox(height: 8),
             pw.Divider(),
-
-            // Total row
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
@@ -415,13 +406,12 @@ class _ReportScreenState extends State<ReportScreen> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Header — date picker + generate
+        // Header
         Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
           color: AppColors.card,
           child: Row(
             children: [
-              // Date picker button
               Expanded(
                 child: GestureDetector(
                   onTap: _pickDate,
@@ -461,8 +451,6 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-
-              // Generate PDF button
               GestureDetector(
                 onTap: _sales.isEmpty ? null : _generatePDF,
                 child: Container(
@@ -578,7 +566,7 @@ class _ReportScreenState extends State<ReportScreen> {
                     itemCount: _sales.length,
                     itemBuilder: (context, index) {
                       final sale = _sales[index];
-                      final createdAt = DateTime.parse(sale['created_at']);
+                      final createdAt = parseDateTime(sale['created_at']);
                       final items = sale['sale_items'] as List;
                       final total = (sale['total'] as num).toDouble();
                       final method = sale['payment_method'] ?? 'cash';
@@ -602,7 +590,6 @@ class _ReportScreenState extends State<ReportScreen> {
                           ),
                           child: Row(
                             children: [
-                              // Time + method
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -639,8 +626,6 @@ class _ReportScreenState extends State<ReportScreen> {
                                 ],
                               ),
                               const SizedBox(width: 12),
-
-                              // Items
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -671,8 +656,6 @@ class _ReportScreenState extends State<ReportScreen> {
                                       ),
                                 ),
                               ),
-
-                              // Total + arrow
                               Row(
                                 children: [
                                   Text(
@@ -800,7 +783,7 @@ class _StatCard extends StatelessWidget {
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                   color: color,
                 ),

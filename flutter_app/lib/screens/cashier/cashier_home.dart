@@ -5,6 +5,7 @@ import '../../services/api_service.dart';
 import '../login_screen.dart';
 import '../tenant/pos_screen.dart';
 import '../receipt_screen.dart';
+import '../../utils/date_helper.dart';
 
 class CashierHome extends StatefulWidget {
   const CashierHome({super.key});
@@ -214,9 +215,7 @@ class _CashierReportScreenState extends State<_CashierReportScreen> {
                     itemCount: _sales.length,
                     itemBuilder: (context, index) {
                       final sale = _sales[index];
-                      final createdAt = DateTime.parse(
-                        sale['created_at'],
-                      ).toLocal();
+                      final createdAt = parseDateTime(sale['created_at']);
                       final items = sale['sale_items'] as List;
                       final total = (sale['total'] as num).toDouble();
                       final method = sale['payment_method'] ?? 'cash';
