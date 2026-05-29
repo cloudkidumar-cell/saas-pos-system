@@ -14,18 +14,19 @@ interface LibraryProduct {
 }
 
 export default function LibraryPage() {
-  const [products, setProducts] = useState
-    LibraryProduct[]
-  >([]);
+  const [products, setProducts] = useState(
+    [] as LibraryProduct[]
+  );
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [kategori, setKategori] = useState('');
-  const [kategoriList, setKategoriList] = useState
-    string[]
-  >([]);
+  const [kategoriList, setKategoriList] = useState(
+    [] as string[]
+  );
   const [showModal, setShowModal] = useState(false);
-  const [editProduct, setEditProduct] =
-    useState<LibraryProduct | null>(null);
+  const [editProduct, setEditProduct] = useState(
+    null as LibraryProduct | null
+  );
   const [form, setForm] = useState({
     barcode: '',
     nama: '',
@@ -63,7 +64,9 @@ export default function LibraryPage() {
 
   const loadKategori = async () => {
     try {
-      const res = await api.get('/library/kategori');
+      const res = await api.get(
+        '/library/kategori'
+      );
       setKategoriList(res.data.data);
     } catch (err) {
       console.error(err);
@@ -96,9 +99,7 @@ export default function LibraryPage() {
 
   const handleDelete = async (id: string) => {
     if (
-      !confirm(
-        'Padam produk ini dari library?'
-      )
+      !confirm('Padam produk ini dari library?')
     )
       return;
     try {
@@ -163,9 +164,7 @@ export default function LibraryPage() {
           type="text"
           placeholder="Cari nama, barcode, brand..."
           value={search}
-          onChange={(e) =>
-            setSearch(e.target.value)
-          }
+          onChange={(e) => setSearch(e.target.value)}
           className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-48 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <select
@@ -287,7 +286,7 @@ export default function LibraryPage() {
         )}
       </div>
 
-      {/* Modal Add/Edit */}
+      {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-screen overflow-y-auto">
@@ -301,7 +300,6 @@ export default function LibraryPage() {
               onSubmit={handleSubmit}
               className="space-y-4"
             >
-              {/* Barcode */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Barcode
@@ -319,11 +317,10 @@ export default function LibraryPage() {
                     })
                   }
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Contoh: 9556789012345"
+                  placeholder="9556789012345"
                 />
               </div>
 
-              {/* Nama */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Nama Produk{' '}
@@ -341,12 +338,11 @@ export default function LibraryPage() {
                     })
                   }
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Contoh: Milo Tin 400g"
+                  placeholder="Milo Tin 400g"
                   required
                 />
               </div>
 
-              {/* Brand */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Brand
@@ -364,11 +360,10 @@ export default function LibraryPage() {
                     })
                   }
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Contoh: Nestle"
+                  placeholder="Nestle"
                 />
               </div>
 
-              {/* Kategori */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Kategori
@@ -386,7 +381,7 @@ export default function LibraryPage() {
                     })
                   }
                   className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Contoh: Minuman, Makanan, Stationery"
+                  placeholder="Minuman, Makanan, Stationery"
                   list="kategori-list"
                 />
                 <datalist id="kategori-list">
@@ -396,7 +391,6 @@ export default function LibraryPage() {
                 </datalist>
               </div>
 
-              {/* Unit */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Unit
@@ -424,7 +418,6 @@ export default function LibraryPage() {
                 </select>
               </div>
 
-              {/* Description */}
               <div>
                 <label className="block text-sm font-medium mb-1">
                   Deskripsi

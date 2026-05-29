@@ -28,32 +28,35 @@ interface LibraryProduct {
 }
 
 export default function ProductsPage() {
-  const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [tenants, setTenants] = useState(
+    [] as Tenant[]
+  );
   const [selectedTenant, setSelectedTenant] =
     useState('');
-  const [products, setProducts] = useState<Product[]>(
-    []
+  const [products, setProducts] = useState(
+    [] as Product[]
   );
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [editProduct, setEditProduct] =
-    useState<Product | null>(null);
-  const [addMode, setAddMode] = useState
-    'library' | 'manual'
-  >('library');
+  const [editProduct, setEditProduct] = useState(
+    null as Product | null
+  );
+  const [addMode, setAddMode] = useState(
+    'library' as 'library' | 'manual'
+  );
 
-  // Library search state
+  // Library search
   const [librarySearch, setLibrarySearch] =
     useState('');
-  const [libraryResults, setLibraryResults] = useState
-    LibraryProduct[]
-  >([]);
+  const [libraryResults, setLibraryResults] = useState(
+    [] as LibraryProduct[]
+  );
   const [selectedLibrary, setSelectedLibrary] =
-    useState<LibraryProduct | null>(null);
+    useState(null as LibraryProduct | null);
   const [librarySearching, setLibrarySearching] =
     useState(false);
 
-  // Form state
+  // Form
   const [form, setForm] = useState({
     nama: '',
     harga: '',
@@ -154,15 +157,12 @@ export default function ProductsPage() {
     if (!selectedTenant) return;
     try {
       if (editProduct) {
-        await api.put(
-          `/products/${editProduct.id}`,
-          {
-            nama: form.nama,
-            harga: parseFloat(form.harga),
-            stok: parseInt(form.stok),
-            barcode: form.barcode
-          }
-        );
+        await api.put(`/products/${editProduct.id}`, {
+          nama: form.nama,
+          harga: parseFloat(form.harga),
+          stok: parseInt(form.stok),
+          barcode: form.barcode
+        });
       } else {
         await api.post('/products', {
           tenant_id: selectedTenant,
@@ -314,9 +314,7 @@ export default function ProductsPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-700">
                     RM{' '}
-                    {Number(product.harga).toFixed(
-                      2
-                    )}
+                    {Number(product.harga).toFixed(2)}
                   </td>
                   <td className="px-4 py-3">
                     <span
@@ -378,7 +376,7 @@ export default function ProductsPage() {
                   : 'Tambah Produk'}
               </h3>
 
-              {/* Toggle Mode — hide when editing */}
+              {/* Toggle — hide when editing */}
               {!editProduct && (
                 <div className="flex bg-gray-100 rounded-lg p-1 mb-5">
                   <button
@@ -418,11 +416,10 @@ export default function ProductsPage() {
                     onSubmit={handleAddFromLibrary}
                     className="space-y-4"
                   >
-                    {/* Search Library */}
                     {!selectedLibrary ? (
                       <div>
                         <label className="block text-sm font-medium mb-1">
-                          Cari Produk dari Library
+                          Cari dari Library
                         </label>
                         <input
                           type="text"
@@ -437,7 +434,6 @@ export default function ProductsPage() {
                           autoFocus
                         />
 
-                        {/* Search Results */}
                         {librarySearching && (
                           <p className="text-xs text-gray-400 mt-2">
                             Mencari...
@@ -466,7 +462,7 @@ export default function ProductsPage() {
                                     <p className="font-medium text-sm text-gray-800">
                                       {item.nama}
                                     </p>
-                                    <div className="flex gap-2 mt-0.5">
+                                    <div className="flex gap-2 mt-0.5 flex-wrap">
                                       {item.brand && (
                                         <span className="text-xs text-gray-500">
                                           {item.brand}
@@ -500,12 +496,10 @@ export default function ProductsPage() {
                             0 && (
                             <p className="text-xs text-gray-400 mt-2">
                               Tiada produk dijumpai
-                              dalam library
                             </p>
                           )}
                       </div>
                     ) : (
-                      // Selected product preview
                       <div>
                         <label className="block text-sm font-medium mb-1">
                           Produk Dipilih
@@ -515,7 +509,7 @@ export default function ProductsPage() {
                             <p className="font-medium text-sm text-gray-800">
                               {selectedLibrary.nama}
                             </p>
-                            <div className="flex gap-2 mt-1">
+                            <div className="flex gap-2 mt-1 flex-wrap">
                               {selectedLibrary.brand && (
                                 <span className="text-xs text-gray-500">
                                   {
@@ -542,12 +536,10 @@ export default function ProductsPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSelectedLibrary(
-                                null
-                              );
+                              setSelectedLibrary(null);
                               setLibrarySearch('');
                             }}
-                            className="text-gray-400 hover:text-red-500 text-xs"
+                            className="text-gray-400 hover:text-red-500 text-xs ml-2"
                           >
                             ✕ Tukar
                           </button>
@@ -555,7 +547,6 @@ export default function ProductsPage() {
                       </div>
                     )}
 
-                    {/* Harga */}
                     <div>
                       <label className="block text-sm font-medium mb-1">
                         Harga (RM){' '}
@@ -580,7 +571,6 @@ export default function ProductsPage() {
                       />
                     </div>
 
-                    {/* Stok */}
                     <div>
                       <label className="block text-sm font-medium mb-1">
                         Stok Awal
@@ -698,12 +688,7 @@ export default function ProductsPage() {
 
                   <div>
                     <label className="block text-sm font-medium mb-1">
-                      Stok{' '}
-                      {!editProduct && (
-                        <span className="text-gray-400 font-normal">
-                          (Awal)
-                        </span>
-                      )}
+                      Stok
                     </label>
                     <input
                       type="number"
