@@ -71,14 +71,19 @@ export default function DashboardLayout({
               className="block px-3 py-2 rounded-lg text-sm hover:bg-gray-100"
             >
               Produk
-
+<Link
+  href="/dashboard/library"
+  className="block px-3 py-2 rounded-lg text-sm hover:bg-gray-100"
+>
+  Product Library
+</Link>
 
             <Link
               href="/dashboard/sales"
                className="block px-3 py-2 rounded-lg text-sm hover:bg-gray-100"
             >
-  Sales Report
-</Link>
+              Sales Report
+                </Link>
             </Link>
           </nav>
         </aside>

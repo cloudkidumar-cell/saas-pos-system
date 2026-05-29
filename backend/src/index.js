@@ -9,6 +9,7 @@ const adminRoutes = require('./routes/admin');
 const productRoutes = require('./routes/products');
 const salesRoutes = require('./routes/sales');
 const staffRoutes = require('./routes/staff');
+const libraryRoutes = require('./routes/library');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,7 @@ app.use('/admin', adminRoutes);
 app.use('/products', productRoutes);
 app.use('/sales', salesRoutes);
 app.use('/staff', staffRoutes);
+app.use('/library', libraryRoutes);
 // Health check
 app.get('/health', async (req, res) => {
   try {

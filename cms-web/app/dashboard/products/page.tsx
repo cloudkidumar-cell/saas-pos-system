@@ -7,47 +7,88 @@ interface Product {
   id: string;
   nama: string;
   harga: number;
-  barcode: string;
   stok: number;
-  tenant_id: string;
+  barcode: string;
+  library_id: string | null;
 }
 
 interface Tenant {
   id: string;
   nama_kedai: string;
+  status: string;
+}
+
+interface LibraryProduct {
+  id: string;
+  barcode: string;
+  nama: string;
+  brand: string;
+  kategori: string;
+  unit: string;
 }
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [selectedTenant, setSelectedTenant] = useState('');
+  const [selectedTenant, setSelectedTenant] =
+    useState('');
+  const [products, setProducts] = useState<Product[]>(
+    []
+  );
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [editProduct, setEditProduct] =
+    useState<Product | null>(null);
+  const [addMode, setAddMode] = useState
+    'library' | 'manual'
+  >('library');
+
+  // Library search state
+  const [librarySearch, setLibrarySearch] =
+    useState('');
+  const [libraryResults, setLibraryResults] = useState
+    LibraryProduct[]
+  >([]);
+  const [selectedLibrary, setSelectedLibrary] =
+    useState<LibraryProduct | null>(null);
+  const [librarySearching, setLibrarySearching] =
+    useState(false);
+
+  // Form state
   const [form, setForm] = useState({
     nama: '',
     harga: '',
-    barcode: '',
     stok: '',
-    tenant_id: ''
+    barcode: ''
   });
 
-  // Load tenants
   useEffect(() => {
     loadTenants();
   }, []);
 
-  // Load products bila tenant berubah
   useEffect(() => {
     if (selectedTenant) loadProducts();
   }, [selectedTenant]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (librarySearch.length >= 2) {
+        searchLibrary(librarySearch);
+      } else {
+        setLibraryResults([]);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [librarySearch]);
+
   const loadTenants = async () => {
     try {
-      const res = await api.get('/admin/tenants?status=approved');
-      setTenants(res.data.data);
-      if (res.data.data.length > 0) {
-        setSelectedTenant(res.data.data[0].id);
+      const res = await api.get('/admin/tenants');
+      const approved = res.data.data.filter(
+        (t: Tenant) => t.status === 'approved'
+      );
+      setTenants(approved);
+      if (approved.length > 0) {
+        setSelectedTenant(approved[0].id);
       }
     } catch (err) {
       console.error(err);
@@ -55,14 +96,13 @@ export default function ProductsPage() {
   };
 
   const loadProducts = async () => {
+    if (!selectedTenant) return;
     try {
       setLoading(true);
       const res = await api.get('/products', {
-        headers: {
-          'x-tenant-id': selectedTenant
-        }
+        params: { tenant_id: selectedTenant }
       });
-      setProducts(res.data.data);
+      setProducts(res.data.data || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -70,30 +110,75 @@ export default function ProductsPage() {
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const searchLibrary = async (q: string) => {
+    try {
+      setLibrarySearching(true);
+      const res = await api.get('/library', {
+        params: { search: q }
+      });
+      setLibraryResults(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLibrarySearching(false);
+    }
+  };
+
+  const handleAddFromLibrary = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault();
+    if (!selectedLibrary || !selectedTenant) return;
+    try {
+      await api.post('/library/add-to-tenant', {
+        library_id: selectedLibrary.id,
+        tenant_id: selectedTenant,
+        harga: parseFloat(form.harga),
+        stok: parseInt(form.stok) || 0
+      });
+      setShowModal(false);
+      resetForm();
+      loadProducts();
+    } catch (err: any) {
+      alert(
+        err.response?.data?.message ||
+          'Error menambah produk'
+      );
+    }
+  };
+
+  const handleAddManual = async (
+    e: React.FormEvent
+  ) => {
+    e.preventDefault();
+    if (!selectedTenant) return;
     try {
       if (editProduct) {
-        await api.put(`/products/${editProduct.id}`, {
-          nama: form.nama,
-          harga: parseFloat(form.harga),
-          barcode: form.barcode,
-          stok: parseInt(form.stok)
-        });
+        await api.put(
+          `/products/${editProduct.id}`,
+          {
+            nama: form.nama,
+            harga: parseFloat(form.harga),
+            stok: parseInt(form.stok),
+            barcode: form.barcode
+          }
+        );
       } else {
         await api.post('/products', {
+          tenant_id: selectedTenant,
           nama: form.nama,
           harga: parseFloat(form.harga),
-          barcode: form.barcode,
-          stok: parseInt(form.stok),
-          tenant_id: form.tenant_id || selectedTenant
+          stok: parseInt(form.stok) || 0,
+          barcode: form.barcode
         });
       }
       setShowModal(false);
       resetForm();
       loadProducts();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error');
+      alert(
+        err.response?.data?.message || 'Error'
+      );
     }
   };
 
@@ -107,43 +192,62 @@ export default function ProductsPage() {
     }
   };
 
-  const handleEdit = (product: Product) => {
-    setEditProduct(product);
+  const handleEdit = (p: Product) => {
+    setEditProduct(p);
+    setAddMode('manual');
     setForm({
-      nama: product.nama,
-      harga: product.harga.toString(),
-      barcode: product.barcode || '',
-      stok: product.stok.toString(),
-      tenant_id: product.tenant_id
+      nama: p.nama,
+      harga: String(p.harga),
+      stok: String(p.stok),
+      barcode: p.barcode || ''
     });
     setShowModal(true);
   };
 
   const resetForm = () => {
-    setForm({ nama: '', harga: '', barcode: '', stok: '', tenant_id: '' });
+    setForm({
+      nama: '',
+      harga: '',
+      stok: '',
+      barcode: ''
+    });
     setEditProduct(null);
+    setSelectedLibrary(null);
+    setLibrarySearch('');
+    setLibraryResults([]);
+    setAddMode('library');
   };
 
   return (
     <div>
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">Produk</h2>
+        <h2 className="text-xl font-bold">
+          Produk Kedai
+        </h2>
         <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700"
+          onClick={() => {
+            resetForm();
+            setShowModal(true);
+          }}
+          disabled={!selectedTenant}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-40"
         >
           + Tambah Produk
         </button>
       </div>
 
-      {/* Tenant Filter */}
+      {/* Tenant Selector */}
       <div className="bg-white rounded-lg p-4 mb-4 shadow-sm">
-        <label className="text-sm font-medium mr-3">Pilih Kedai:</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Pilih Kedai
+        </label>
         <select
           value={selectedTenant}
-          onChange={(e) => setSelectedTenant(e.target.value)}
-          className="border rounded-lg px-3 py-1.5 text-sm"
+          onChange={(e) =>
+            setSelectedTenant(e.target.value)
+          }
+          className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {tenants.map((t) => (
             <option key={t.id} value={t.id}>
@@ -156,56 +260,105 @@ export default function ProductsPage() {
       {/* Products Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">Loading...</div>
+          <div className="p-8 text-center text-gray-500">
+            Loading...
+          </div>
         ) : products.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            Tiada produk. Tambah produk baru.
+            <p className="font-medium">
+              Tiada produk
+            </p>
+            <p className="text-sm mt-1">
+              Tambah produk dari library atau manual
+            </p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="text-left px-4 py-3 font-medium">Nama</th>
-                <th className="text-left px-4 py-3 font-medium">Harga</th>
-                <th className="text-left px-4 py-3 font-medium">Barcode</th>
-                <th className="text-left px-4 py-3 font-medium">Stok</th>
-                <th className="text-left px-4 py-3 font-medium">Tindakan</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">
+                  Nama
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">
+                  Barcode
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">
+                  Harga
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">
+                  Stok
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">
+                  Sumber
+                </th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">
+                  Tindakan
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {products.map((product) => (
-                <tr key={product.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3">{product.nama}</td>
-                  <td className="px-4 py-3">RM {product.harga.toFixed(2)}</td>
-                  <td className="px-4 py-3">
+                <tr
+                  key={product.id}
+                  className="hover:bg-gray-50"
+                >
+                  <td className="px-4 py-3 font-medium text-gray-800">
+                    {product.nama}
+                  </td>
+                  <td className="px-4 py-3 font-mono text-xs text-gray-500">
                     {product.barcode || (
-                      <span className="text-gray-400">Tiada</span>
+                      <span className="text-gray-300">
+                        —
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-gray-700">
+                    RM{' '}
+                    {Number(product.harga).toFixed(
+                      2
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`font-medium ${
-                      product.stok === 0
-                        ? 'text-red-600'
-                        : product.stok < 10
-                        ? 'text-yellow-600'
-                        : 'text-green-600'
-                    }`}>
+                    <span
+                      className={`font-medium ${
+                        product.stok <= 5
+                          ? 'text-red-600'
+                          : 'text-gray-700'
+                      }`}
+                    >
                       {product.stok}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => handleEdit(product)}
-                      className="text-blue-600 hover:underline mr-3"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(product.id)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Padam
-                    </button>
+                    {product.library_id ? (
+                      <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                        Library
+                      </span>
+                    ) : (
+                      <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">
+                        Manual
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() =>
+                          handleEdit(product)
+                        }
+                        className="text-blue-600 hover:underline text-xs font-medium"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDelete(product.id)
+                        }
+                        className="text-red-600 hover:underline text-xs font-medium"
+                      >
+                        Padam
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -214,104 +367,382 @@ export default function ProductsPage() {
         )}
       </div>
 
-      {/* Modal Add/Edit */}
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h3 className="font-bold text-lg mb-4">
-              {editProduct ? 'Edit Produk' : 'Tambah Produk'}
-            </h3>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="font-bold text-lg mb-4">
+                {editProduct
+                  ? 'Edit Produk'
+                  : 'Tambah Produk'}
+              </h3>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Nama Produk
-                </label>
-                <input
-                  type="text"
-                  value={form.nama}
-                  onChange={(e) => setForm({ ...form, nama: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Harga (RM)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={form.harga}
-                  onChange={(e) => setForm({ ...form, harga: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Barcode
-                </label>
-                <input
-                  type="text"
-                  value={form.barcode}
-                  onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
-                  placeholder="Optional"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Stok
-                </label>
-                <input
-                  type="number"
-                  value={form.stok}
-                  onChange={(e) => setForm({ ...form, stok: e.target.value })}
-                  className="w-full border rounded-lg px-3 py-2 text-sm"
-                  required
-                />
-              </div>
-
-              {/* Tenant select — untuk add je */}
+              {/* Toggle Mode — hide when editing */}
               {!editProduct && (
-                <div>
-                  <label className="block text-sm font-medium mb-1">
-                    Kedai
-                  </label>
-                  <select
-                    value={form.tenant_id || selectedTenant}
-                    onChange={(e) => setForm({ ...form, tenant_id: e.target.value })}
-                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                <div className="flex bg-gray-100 rounded-lg p-1 mb-5">
+                  <button
+                    onClick={() => {
+                      setAddMode('library');
+                      setSelectedLibrary(null);
+                      setLibrarySearch('');
+                      setLibraryResults([]);
+                    }}
+                    className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+                      addMode === 'library'
+                        ? 'bg-white shadow text-blue-600'
+                        : 'text-gray-500'
+                    }`}
                   >
-                    {tenants.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.nama_kedai}
-                      </option>
-                    ))}
-                  </select>
+                    Dari Library
+                  </button>
+                  <button
+                    onClick={() =>
+                      setAddMode('manual')
+                    }
+                    className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${
+                      addMode === 'manual'
+                        ? 'bg-white shadow text-blue-600'
+                        : 'text-gray-500'
+                    }`}
+                  >
+                    Manual
+                  </button>
                 </div>
               )}
 
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700"
+              {/* LIBRARY MODE */}
+              {addMode === 'library' &&
+                !editProduct && (
+                  <form
+                    onSubmit={handleAddFromLibrary}
+                    className="space-y-4"
+                  >
+                    {/* Search Library */}
+                    {!selectedLibrary ? (
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Cari Produk dari Library
+                        </label>
+                        <input
+                          type="text"
+                          value={librarySearch}
+                          onChange={(e) =>
+                            setLibrarySearch(
+                              e.target.value
+                            )
+                          }
+                          className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Taip nama, barcode atau brand..."
+                          autoFocus
+                        />
+
+                        {/* Search Results */}
+                        {librarySearching && (
+                          <p className="text-xs text-gray-400 mt-2">
+                            Mencari...
+                          </p>
+                        )}
+
+                        {!librarySearching &&
+                          libraryResults.length >
+                            0 && (
+                            <div className="mt-2 border rounded-lg divide-y max-h-56 overflow-y-auto">
+                              {libraryResults.map(
+                                (item) => (
+                                  <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedLibrary(
+                                        item
+                                      );
+                                      setLibraryResults(
+                                        []
+                                      );
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 hover:bg-blue-50 transition-colors"
+                                  >
+                                    <p className="font-medium text-sm text-gray-800">
+                                      {item.nama}
+                                    </p>
+                                    <div className="flex gap-2 mt-0.5">
+                                      {item.brand && (
+                                        <span className="text-xs text-gray-500">
+                                          {item.brand}
+                                        </span>
+                                      )}
+                                      {item.barcode && (
+                                        <span className="text-xs text-gray-400 font-mono">
+                                          {
+                                            item.barcode
+                                          }
+                                        </span>
+                                      )}
+                                      {item.kategori && (
+                                        <span className="text-xs bg-blue-50 text-blue-600 px-1.5 rounded">
+                                          {
+                                            item.kategori
+                                          }
+                                        </span>
+                                      )}
+                                    </div>
+                                  </button>
+                                )
+                              )}
+                            </div>
+                          )}
+
+                        {!librarySearching &&
+                          librarySearch.length >=
+                            2 &&
+                          libraryResults.length ===
+                            0 && (
+                            <p className="text-xs text-gray-400 mt-2">
+                              Tiada produk dijumpai
+                              dalam library
+                            </p>
+                          )}
+                      </div>
+                    ) : (
+                      // Selected product preview
+                      <div>
+                        <label className="block text-sm font-medium mb-1">
+                          Produk Dipilih
+                        </label>
+                        <div className="border rounded-lg p-3 bg-blue-50 flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-sm text-gray-800">
+                              {selectedLibrary.nama}
+                            </p>
+                            <div className="flex gap-2 mt-1">
+                              {selectedLibrary.brand && (
+                                <span className="text-xs text-gray-500">
+                                  {
+                                    selectedLibrary.brand
+                                  }
+                                </span>
+                              )}
+                              {selectedLibrary.barcode && (
+                                <span className="text-xs text-gray-400 font-mono">
+                                  {
+                                    selectedLibrary.barcode
+                                  }
+                                </span>
+                              )}
+                              {selectedLibrary.kategori && (
+                                <span className="text-xs bg-blue-100 text-blue-600 px-1.5 rounded">
+                                  {
+                                    selectedLibrary.kategori
+                                  }
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedLibrary(
+                                null
+                              );
+                              setLibrarySearch('');
+                            }}
+                            className="text-gray-400 hover:text-red-500 text-xs"
+                          >
+                            ✕ Tukar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Harga */}
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Harga (RM){' '}
+                        <span className="text-red-500">
+                          *
+                        </span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={form.harga}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            harga: e.target.value
+                          })
+                        }
+                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0.00"
+                        required
+                      />
+                    </div>
+
+                    {/* Stok */}
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        Stok Awal
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={form.stok}
+                        onChange={(e) =>
+                          setForm({
+                            ...form,
+                            stok: e.target.value
+                          })
+                        }
+                        className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="0"
+                      />
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        type="submit"
+                        disabled={!selectedLibrary}
+                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 font-medium disabled:opacity-40"
+                      >
+                        Tambah ke Kedai
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowModal(false);
+                          resetForm();
+                        }}
+                        className="flex-1 border py-2 rounded-lg text-sm hover:bg-gray-50"
+                      >
+                        Batal
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+              {/* MANUAL MODE */}
+              {(addMode === 'manual' ||
+                editProduct) && (
+                <form
+                  onSubmit={handleAddManual}
+                  className="space-y-4"
                 >
-                  {editProduct ? 'Kemaskini' : 'Tambah'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setShowModal(false); resetForm(); }}
-                  className="flex-1 border py-2 rounded-lg text-sm hover:bg-gray-50"
-                >
-                  Batal
-                </button>
-              </div>
-            </form>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Nama Produk{' '}
+                      <span className="text-red-500">
+                        *
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.nama}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          nama: e.target.value
+                        })
+                      }
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Nama produk"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Barcode
+                      <span className="text-gray-400 font-normal ml-1">
+                        (Optional)
+                      </span>
+                    </label>
+                    <input
+                      type="text"
+                      value={form.barcode}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          barcode: e.target.value
+                        })
+                      }
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Barcode produk"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Harga (RM){' '}
+                      <span className="text-red-500">
+                        *
+                      </span>
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.harga}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          harga: e.target.value
+                        })
+                      }
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">
+                      Stok{' '}
+                      {!editProduct && (
+                        <span className="text-gray-400 font-normal">
+                          (Awal)
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={form.stok}
+                      onChange={(e) =>
+                        setForm({
+                          ...form,
+                          stok: e.target.value
+                        })
+                      }
+                      className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="0"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      type="submit"
+                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm hover:bg-blue-700 font-medium"
+                    >
+                      {editProduct
+                        ? 'Kemaskini'
+                        : 'Tambah Produk'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowModal(false);
+                        resetForm();
+                      }}
+                      className="flex-1 border py-2 rounded-lg text-sm hover:bg-gray-50"
+                    >
+                      Batal
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
