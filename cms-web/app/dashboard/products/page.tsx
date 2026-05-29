@@ -103,7 +103,9 @@ export default function ProductsPage() {
     try {
       setLoading(true);
       const res = await api.get('/products', {
-        params: { tenant_id: selectedTenant }
+        headers: {
+          'x-tenant-id': selectedTenant
+        }
       });
       setProducts(res.data.data || []);
     } catch (err) {
@@ -157,12 +159,15 @@ export default function ProductsPage() {
     if (!selectedTenant) return;
     try {
       if (editProduct) {
-        await api.put(`/products/${editProduct.id}`, {
-          nama: form.nama,
-          harga: parseFloat(form.harga),
-          stok: parseInt(form.stok),
-          barcode: form.barcode
-        });
+        await api.put(
+          `/products/${editProduct.id}`,
+          {
+            nama: form.nama,
+            harga: parseFloat(form.harga),
+            stok: parseInt(form.stok),
+            barcode: form.barcode
+          }
+        );
       } else {
         await api.post('/products', {
           tenant_id: selectedTenant,
@@ -244,9 +249,9 @@ export default function ProductsPage() {
         </label>
         <select
           value={selectedTenant}
-          onChange={(e) =>
-            setSelectedTenant(e.target.value)
-          }
+          onChange={(e) => {
+            setSelectedTenant(e.target.value);
+          }}
           className="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {tenants.map((t) => (
@@ -376,7 +381,7 @@ export default function ProductsPage() {
                   : 'Tambah Produk'}
               </h3>
 
-              {/* Toggle — hide when editing */}
+              {/* Toggle */}
               {!editProduct && (
                 <div className="flex bg-gray-100 rounded-lg p-1 mb-5">
                   <button
@@ -536,7 +541,9 @@ export default function ProductsPage() {
                           <button
                             type="button"
                             onClick={() => {
-                              setSelectedLibrary(null);
+                              setSelectedLibrary(
+                                null
+                              );
                               setLibrarySearch('');
                             }}
                             className="text-gray-400 hover:text-red-500 text-xs ml-2"
