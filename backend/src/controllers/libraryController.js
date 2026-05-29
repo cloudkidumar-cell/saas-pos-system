@@ -1,8 +1,5 @@
 const supabase = require('../config/supabase');
 
-// ================================
-// GET semua products dalam library
-// ================================
 const getLibrary = async (req, res) => {
   try {
     const { search, kategori } = req.query;
@@ -12,14 +9,12 @@ const getLibrary = async (req, res) => {
       .select('*')
       .order('nama', { ascending: true });
 
-    // Search by nama atau barcode
     if (search) {
       query = query.or(
         `nama.ilike.%${search}%,barcode.ilike.%${search}%,brand.ilike.%${search}%`
       );
     }
 
-    // Filter by kategori
     if (kategori) {
       query = query.eq('kategori', kategori);
     }
@@ -27,22 +22,15 @@ const getLibrary = async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    res.status(200).json({
-      success: true,
-      data
-    });
+    res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Get library error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error' });
   }
 };
 
-// ================================
-// GET product by barcode
-// ================================
 const getLibraryByBarcode = async (req, res) => {
   try {
     const { barcode } = req.params;
@@ -60,23 +48,15 @@ const getLibraryByBarcode = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data
-    });
+    res.status(200).json({ success: true, data });
   } catch (error) {
     console.error('Get library barcode error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error' });
   }
 };
 
-// ================================
-// CREATE product dalam library
-// Admin je
-// ================================
 const createLibraryProduct = async (req, res) => {
   try {
     const {
@@ -95,7 +75,6 @@ const createLibraryProduct = async (req, res) => {
       });
     }
 
-    // Check barcode duplicate
     if (barcode) {
       const { data: existing } = await supabase
         .from('product_library')
@@ -133,16 +112,12 @@ const createLibraryProduct = async (req, res) => {
     });
   } catch (error) {
     console.error('Create library error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error' });
   }
 };
 
-// ================================
-// UPDATE product dalam library
-// ================================
 const updateLibraryProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -178,16 +153,12 @@ const updateLibraryProduct = async (req, res) => {
     });
   } catch (error) {
     console.error('Update library error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error' });
   }
 };
 
-// ================================
-// DELETE product dari library
-// ================================
 const deleteLibraryProduct = async (req, res) => {
   try {
     const { id } = req.params;
@@ -205,16 +176,12 @@ const deleteLibraryProduct = async (req, res) => {
     });
   } catch (error) {
     console.error('Delete library error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error' });
   }
 };
 
-// ================================
-// ADD product dari library ke kedai tenant
-// ================================
 const addToTenant = async (req, res) => {
   try {
     const { library_id, tenant_id, harga, stok } =
@@ -228,7 +195,6 @@ const addToTenant = async (req, res) => {
       });
     }
 
-    // Get product dari library
     const { data: libProduct, error: libError } =
       await supabase
         .from('product_library')
@@ -243,7 +209,6 @@ const addToTenant = async (req, res) => {
       });
     }
 
-    // Check kalau product dah ada dalam tenant
     const { data: existing } = await supabase
       .from('products')
       .select('id')
@@ -258,7 +223,6 @@ const addToTenant = async (req, res) => {
       });
     }
 
-    // Add ke tenant products
     const { data, error } = await supabase
       .from('products')
       .insert({
@@ -281,16 +245,12 @@ const addToTenant = async (req, res) => {
     });
   } catch (error) {
     console.error('Add to tenant error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error' });
   }
 };
 
-// ================================
-// GET semua kategori dalam library
-// ================================
 const getKategori = async (req, res) => {
   try {
     const { data, error } = await supabase
@@ -305,16 +265,14 @@ const getKategori = async (req, res) => {
       ...new Set(data.map((d) => d.kategori))
     ];
 
-    res.status(200).json({
-      success: true,
-      data: uniqueKategori
-    });
+    res
+      .status(200)
+      .json({ success: true, data: uniqueKategori });
   } catch (error) {
     console.error('Get kategori error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    res
+      .status(500)
+      .json({ success: false, message: 'Server error' });
   }
 };
 
