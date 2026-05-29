@@ -22,8 +22,7 @@ class ReceiptScreen extends StatelessWidget {
     final alamat = prefs.getString('alamat') ?? '';
     final noTel = prefs.getString('no_tel') ?? '';
     final emailKedai = prefs.getString('email_kedai') ?? '';
-    final footer =
-        prefs.getString('footer') ?? 'Your transaction has been completed';
+    final footer = prefs.getString('footer') ?? 'Terima Kasih Kerana Membeli!';
 
     final pdf = pw.Document();
     final items = sale['sale_items'] as List;
@@ -49,6 +48,18 @@ class ReceiptScreen extends StatelessWidget {
 
     final boldStyle = pw.TextStyle(font: pw.Font.helveticaBold(), fontSize: 10);
 
+    // Fixed divider using Container
+    pw.Widget divider() => pw.Container(
+      height: 0.5,
+      margin: const pw.EdgeInsets.symmetric(vertical: 4),
+      decoration: const pw.BoxDecoration(color: PdfColors.black),
+    );
+
+    final totalQty = items.fold(
+      0,
+      (sum, item) => sum + (item['quantity'] as int),
+    );
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.roll80,
@@ -56,17 +67,14 @@ class ReceiptScreen extends StatelessWidget {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.center,
           children: [
+            // ── Nama Kedai ──
             pw.Text(
               namaKedai,
               style: pw.TextStyle(font: pw.Font.helveticaBold(), fontSize: 14),
               textAlign: pw.TextAlign.center,
             ),
-            if (noSsm.isNotEmpty)
-              pw.Text(
-                'SSM: $noSsm',
-                style: baseStyle.copyWith(fontSize: 9),
-                textAlign: pw.TextAlign.center,
-              ),
+
+            // Alamat
             if (alamat.isNotEmpty)
               pw.Padding(
                 padding: const pw.EdgeInsets.only(top: 2),
@@ -76,24 +84,38 @@ class ReceiptScreen extends StatelessWidget {
                   textAlign: pw.TextAlign.center,
                 ),
               ),
-            pw.SizedBox(height: 4),
-            pw.Text(
-              '--------------------------------',
-              style: baseStyle.copyWith(fontSize: 9),
+
+            // SSM
+            if (noSsm.isNotEmpty)
+              pw.Padding(
+                padding: const pw.EdgeInsets.only(top: 2),
+                child: pw.Text(
+                  'SSM: $noSsm',
+                  style: baseStyle.copyWith(fontSize: 9),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+
+            divider(),
+
+            // ── Receipt Title ──
+            pw.Center(
+              child: pw.Text(
+                'RECEIPT',
+                style: boldStyle.copyWith(fontSize: 13, letterSpacing: 2),
+              ),
             ),
-            pw.Text(
-              'RECEIPT',
-              style: boldStyle.copyWith(fontSize: 13, letterSpacing: 2),
+            pw.SizedBox(height: 2),
+            pw.Center(
+              child: pw.Text(
+                dateFormatter.format(createdAt),
+                style: baseStyle.copyWith(fontSize: 9),
+              ),
             ),
-            pw.Text(
-              dateFormatter.format(createdAt),
-              style: baseStyle.copyWith(fontSize: 9),
-            ),
-            pw.Text(
-              '--------------------------------',
-              style: baseStyle.copyWith(fontSize: 9),
-            ),
-            pw.SizedBox(height: 4),
+
+            divider(),
+
+            // ── Items ──
             ...items.map((item) {
               final nama = item['products'] != null
                   ? item['products']['nama']
@@ -118,12 +140,21 @@ class ReceiptScreen extends StatelessWidget {
                 ),
               );
             }),
-            pw.SizedBox(height: 4),
-            pw.Text(
-              '--------------------------------',
-              style: baseStyle.copyWith(fontSize: 9),
+
+            divider(),
+
+            // ── Total Qty ──
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Total Qty', style: baseStyle),
+                pw.Text('$totalQty', style: baseStyle),
+              ],
             ),
-            pw.SizedBox(height: 4),
+
+            pw.SizedBox(height: 3),
+
+            // ── Total ──
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
@@ -134,14 +165,21 @@ class ReceiptScreen extends StatelessWidget {
                 ),
               ],
             ),
+
+            pw.SizedBox(height: 3),
+
+            // ── Jenis Bayaran ──
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text('Bayaran', style: baseStyle),
+                pw.Text('Jenis Bayaran', style: baseStyle),
                 pw.Text(paymentLabel(paymentMethod), style: baseStyle),
               ],
             ),
-            if (paymentMethod == 'cash' && cashReceived != null)
+
+            // ── Cash Details ──
+            if (paymentMethod == 'cash' && cashReceived != null) ...[
+              pw.SizedBox(height: 2),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
@@ -152,7 +190,7 @@ class ReceiptScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            if (paymentMethod == 'cash' && changeAmount != null)
+              pw.SizedBox(height: 2),
               pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
@@ -163,41 +201,50 @@ class ReceiptScreen extends StatelessWidget {
                   ),
                 ],
               ),
-            pw.SizedBox(height: 8),
-            pw.Text(
-              '--------------------------------',
-              style: baseStyle.copyWith(fontSize: 9),
+            ],
+
+            divider(),
+
+            // ── Footer ──
+            pw.Center(
+              child: pw.Text(
+                footer,
+                style: baseStyle,
+                textAlign: pw.TextAlign.center,
+              ),
             ),
-            pw.SizedBox(height: 6),
-            pw.Text(footer, style: baseStyle, textAlign: pw.TextAlign.center),
-            pw.SizedBox(height: 6),
-            pw.Text(
-              '--------------------------------',
-              style: baseStyle.copyWith(fontSize: 9),
-            ),
-            pw.SizedBox(height: 6),
+
+            pw.SizedBox(height: 2),
+
+            // No tel
             if (noTel.isNotEmpty)
-              pw.Text(
-                'Tel: $noTel',
-                style: baseStyle.copyWith(fontSize: 9),
-                textAlign: pw.TextAlign.center,
+              pw.Center(
+                child: pw.Text(
+                  'Tel: $noTel',
+                  style: baseStyle.copyWith(fontSize: 9),
+                  textAlign: pw.TextAlign.center,
+                ),
               ),
+
+            // Email
             if (emailKedai.isNotEmpty)
-              pw.Text(
-                emailKedai,
-                style: baseStyle.copyWith(fontSize: 9),
+              pw.Center(
+                child: pw.Text(
+                  emailKedai,
+                  style: baseStyle.copyWith(fontSize: 9),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+
+            divider(),
+
+            // ── Thank You ──
+            pw.Center(
+              child: pw.Text(
+                'Thank You',
+                style: boldStyle.copyWith(fontSize: 11),
                 textAlign: pw.TextAlign.center,
               ),
-            pw.SizedBox(height: 4),
-            pw.Text(
-              '--------------------------------',
-              style: baseStyle.copyWith(fontSize: 9),
-            ),
-            pw.SizedBox(height: 4),
-            pw.Text(
-              'Thank You',
-              style: boldStyle.copyWith(fontSize: 11),
-              textAlign: pw.TextAlign.center,
             ),
           ],
         ),
@@ -212,9 +259,6 @@ class ReceiptScreen extends StatelessWidget {
       final supabase = Supabase.instance.client;
       final fileName =
           'receipt-${sale['id']}-${DateTime.now().millisecondsSinceEpoch}.pdf';
-
-      debugPrint('Uploading: $fileName');
-      debugPrint('Size: ${bytes.length} bytes');
 
       await supabase.storage
           .from('receipts')
@@ -231,7 +275,6 @@ class ReceiptScreen extends StatelessWidget {
           .from('receipts')
           .getPublicUrl(fileName);
 
-      debugPrint('URL: $publicUrl');
       return publicUrl;
     } catch (e) {
       debugPrint('Upload error: $e');
@@ -379,7 +422,7 @@ class ReceiptScreen extends StatelessWidget {
                               final pdfUrl = await _uploadPDFToStorage(bytes);
 
                               final message =
-                                  'Terima kasih kerana membeli!\n\nMuat turun resit PDF:\n$pdfUrl';
+                                  'Terima kasih kerana membeli! 🛍️\n\nMuat turun resit PDF anda:\n$pdfUrl';
                               final waUrl =
                                   'https://wa.me/$phone?text=${Uri.encodeComponent(message)}';
 
@@ -530,7 +573,7 @@ class ReceiptScreen extends StatelessWidget {
 
                   final receiptUrl = '$_cmsBaseUrl/receipt/${sale['id']}';
                   final message =
-                      'Terima kasih kerana membeli!\n\nSila klik untuk melihat resit:\n$receiptUrl';
+                      'Terima kasih kerana membeli! 🛍️\n\nSila klik untuk melihat resit:\n$receiptUrl';
                   final waUrl =
                       'https://wa.me/$phone?text=${Uri.encodeComponent(message)}';
 

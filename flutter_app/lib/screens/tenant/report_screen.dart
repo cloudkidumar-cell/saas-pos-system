@@ -1,8 +1,10 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../services/api_service.dart';
 import '../../utils/date_helper.dart';
@@ -72,50 +74,73 @@ class _ReportScreenState extends State<ReportScreen> {
   double get _totalRevenue =>
       _sales.fold(0, (sum, sale) => sum + (sale['total'] as num).toDouble());
 
-  Future<void> _generatePDF() async {
+  int get _totalQty => _sales.fold(
+    0,
+    (sum, sale) =>
+        sum +
+        (sale['sale_items'] as List).fold(
+          0,
+          (s, item) => s + (item['quantity'] as int),
+        ),
+  );
+
+  // Generate EOD PDF
+  Future<Uint8List> _generateEODPDF() async {
     final pdf = pw.Document();
-    final dateStr = _dateFormatter.format(_selectedDate);
+    final dateStr = DateFormat('dd/MM/yyyy').format(_selectedDate);
+    final timeStr = DateFormat('hh:mm a').format(DateTime.now());
+
+    final baseStyle = pw.TextStyle(font: pw.Font.helvetica(), fontSize: 10);
+
+    final boldStyle = pw.TextStyle(font: pw.Font.helveticaBold(), fontSize: 10);
+
+    pw.Widget divider() => pw.Container(
+      height: 0.5,
+      margin: const pw.EdgeInsets.symmetric(vertical: 4),
+      decoration: const pw.BoxDecoration(color: PdfColors.black),
+    );
 
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
+        margin: const pw.EdgeInsets.all(24),
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'LAPORAN JUALAN',
-                      style: pw.TextStyle(
-                        fontSize: 20,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                    pw.Text(
-                      'Tarikh: $dateStr',
-                      style: const pw.TextStyle(fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
+            // Header
+            pw.Center(
+              child: pw.Text(
+                'LAPORAN JUALAN HARIAN',
+                style: boldStyle.copyWith(fontSize: 16),
+              ),
             ),
-            pw.SizedBox(height: 8),
-            pw.Divider(),
-            pw.SizedBox(height: 8),
+            pw.Center(
+              child: pw.Text(
+                'End of Day Report',
+                style: baseStyle.copyWith(fontSize: 11),
+              ),
+            ),
+            pw.SizedBox(height: 4),
+            pw.Center(
+              child: pw.Text(
+                'Tarikh: $dateStr   Dijana: $timeStr',
+                style: baseStyle.copyWith(fontSize: 9),
+              ),
+            ),
+
+            divider(),
+
+            // Summary
+            pw.SizedBox(height: 4),
             pw.Row(
               children: [
                 pw.Expanded(
                   child: pw.Container(
-                    padding: const pw.EdgeInsets.all(12),
+                    padding: const pw.EdgeInsets.all(10),
                     decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey300),
-                      borderRadius: const pw.BorderRadius.all(
-                        pw.Radius.circular(8),
+                      border: pw.Border.all(
+                        color: PdfColors.grey400,
+                        width: 0.5,
                       ),
                     ),
                     child: pw.Column(
@@ -123,30 +148,55 @@ class _ReportScreenState extends State<ReportScreen> {
                       children: [
                         pw.Text(
                           'Jumlah Transaksi',
-                          style: const pw.TextStyle(
-                            fontSize: 10,
+                          style: baseStyle.copyWith(
+                            fontSize: 9,
                             color: PdfColors.grey600,
                           ),
                         ),
                         pw.Text(
                           '${_sales.length}',
-                          style: pw.TextStyle(
-                            fontSize: 18,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
+                          style: boldStyle.copyWith(fontSize: 18),
                         ),
                       ],
                     ),
                   ),
                 ),
-                pw.SizedBox(width: 12),
+                pw.SizedBox(width: 8),
                 pw.Expanded(
                   child: pw.Container(
-                    padding: const pw.EdgeInsets.all(12),
+                    padding: const pw.EdgeInsets.all(10),
                     decoration: pw.BoxDecoration(
-                      border: pw.Border.all(color: PdfColors.grey300),
-                      borderRadius: const pw.BorderRadius.all(
-                        pw.Radius.circular(8),
+                      border: pw.Border.all(
+                        color: PdfColors.grey400,
+                        width: 0.5,
+                      ),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'Jumlah Item',
+                          style: baseStyle.copyWith(
+                            fontSize: 9,
+                            color: PdfColors.grey600,
+                          ),
+                        ),
+                        pw.Text(
+                          '$_totalQty',
+                          style: boldStyle.copyWith(fontSize: 18),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                pw.SizedBox(width: 8),
+                pw.Expanded(
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(10),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(
+                        color: PdfColors.grey400,
+                        width: 0.5,
                       ),
                     ),
                     child: pw.Column(
@@ -154,17 +204,14 @@ class _ReportScreenState extends State<ReportScreen> {
                       children: [
                         pw.Text(
                           'Jumlah Pendapatan',
-                          style: const pw.TextStyle(
-                            fontSize: 10,
+                          style: baseStyle.copyWith(
+                            fontSize: 9,
                             color: PdfColors.grey600,
                           ),
                         ),
                         pw.Text(
                           'RM ${_totalRevenue.toStringAsFixed(2)}',
-                          style: pw.TextStyle(
-                            fontSize: 18,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
+                          style: boldStyle.copyWith(fontSize: 14),
                         ),
                       ],
                     ),
@@ -172,10 +219,14 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               ],
             ),
-            pw.SizedBox(height: 16),
+
+            pw.SizedBox(height: 12),
+            divider(),
+
+            // Table header
             pw.Container(
               padding: const pw.EdgeInsets.symmetric(
-                horizontal: 8,
+                horizontal: 6,
                 vertical: 6,
               ),
               color: PdfColors.grey200,
@@ -185,60 +236,61 @@ class _ReportScreenState extends State<ReportScreen> {
                     flex: 2,
                     child: pw.Text(
                       'Masa',
-                      style: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold,
-                        fontSize: 11,
-                      ),
+                      style: boldStyle.copyWith(fontSize: 9),
                     ),
                   ),
                   pw.Expanded(
                     flex: 4,
                     child: pw.Text(
                       'Item',
-                      style: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold,
-                        fontSize: 11,
-                      ),
+                      style: boldStyle.copyWith(fontSize: 9),
                     ),
                   ),
                   pw.Expanded(
                     flex: 2,
                     child: pw.Text(
                       'Kaedah',
-                      style: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold,
-                        fontSize: 11,
-                      ),
+                      style: boldStyle.copyWith(fontSize: 9),
                     ),
                   ),
                   pw.Expanded(
                     flex: 2,
                     child: pw.Text(
                       'Total',
-                      style: pw.TextStyle(
-                        fontWeight: pw.FontWeight.bold,
-                        fontSize: 11,
-                      ),
+                      style: boldStyle.copyWith(fontSize: 9),
                       textAlign: pw.TextAlign.right,
                     ),
                   ),
                 ],
               ),
             ),
+
+            // Table rows
             ..._sales.map((sale) {
               final createdAt = parseDateTime(sale['created_at']);
               final items = sale['sale_items'] as List;
               final total = (sale['total'] as num).toDouble();
               final method = sale['payment_method'] ?? 'cash';
 
+              String methodLabel(String m) {
+                switch (m) {
+                  case 'qr_bank':
+                    return 'QR Bank';
+                  case 'tng':
+                    return 'TnG';
+                  default:
+                    return 'Tunai';
+                }
+              }
+
               return pw.Container(
                 padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 6,
+                  horizontal: 6,
+                  vertical: 5,
                 ),
                 decoration: const pw.BoxDecoration(
                   border: pw.Border(
-                    bottom: pw.BorderSide(color: PdfColors.grey200),
+                    bottom: pw.BorderSide(color: PdfColors.grey200, width: 0.5),
                   ),
                 ),
                 child: pw.Row(
@@ -248,7 +300,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       flex: 2,
                       child: pw.Text(
                         _timeFormatter.format(createdAt),
-                        style: const pw.TextStyle(fontSize: 10),
+                        style: baseStyle.copyWith(fontSize: 9),
                       ),
                     ),
                     pw.Expanded(
@@ -261,7 +313,7 @@ class _ReportScreenState extends State<ReportScreen> {
                               : item['nama'] ?? '-';
                           return pw.Text(
                             '$nama x${item['quantity']}',
-                            style: const pw.TextStyle(fontSize: 10),
+                            style: baseStyle.copyWith(fontSize: 9),
                           );
                         }).toList(),
                       ),
@@ -269,22 +321,15 @@ class _ReportScreenState extends State<ReportScreen> {
                     pw.Expanded(
                       flex: 2,
                       child: pw.Text(
-                        method == 'cash'
-                            ? 'Tunai'
-                            : method == 'qr_bank'
-                            ? 'QR Bank'
-                            : 'TnG',
-                        style: const pw.TextStyle(fontSize: 10),
+                        methodLabel(method),
+                        style: baseStyle.copyWith(fontSize: 9),
                       ),
                     ),
                     pw.Expanded(
                       flex: 2,
                       child: pw.Text(
                         'RM ${total.toStringAsFixed(2)}',
-                        style: pw.TextStyle(
-                          fontSize: 10,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
+                        style: boldStyle.copyWith(fontSize: 9),
                         textAlign: pw.TextAlign.right,
                       ),
                     ),
@@ -292,38 +337,73 @@ class _ReportScreenState extends State<ReportScreen> {
                 ),
               );
             }),
+
+            pw.SizedBox(height: 6),
+            divider(),
+
+            // Total row
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 6,
+                vertical: 6,
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'JUMLAH KESELURUHAN',
+                    style: boldStyle.copyWith(fontSize: 11),
+                  ),
+                  pw.Text(
+                    'RM ${_totalRevenue.toStringAsFixed(2)}',
+                    style: boldStyle.copyWith(fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+
+            divider(),
             pw.SizedBox(height: 8),
-            pw.Divider(),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'JUMLAH KESELURUHAN',
-                  style: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 12,
-                  ),
+
+            pw.Center(
+              child: pw.Text(
+                'Laporan ini dijana secara automatik oleh POS System',
+                style: baseStyle.copyWith(
+                  fontSize: 8,
+                  color: PdfColors.grey600,
                 ),
-                pw.Text(
-                  'RM ${_totalRevenue.toStringAsFixed(2)}',
-                  style: pw.TextStyle(
-                    fontWeight: pw.FontWeight.bold,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
+              ),
             ),
           ],
         ),
       ),
     );
 
-    await Printing.sharePdf(
-      bytes: await pdf.save(),
-      filename: 'laporan-${DateFormat('yyyy-MM-dd').format(_selectedDate)}.pdf',
-    );
+    return await pdf.save();
   }
 
+  // Upload PDF ke Supabase Storage
+  Future<String> _uploadReportToStorage(Uint8List bytes) async {
+    final supabase = Supabase.instance.client;
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final fileName =
+        'eod-report-$dateStr-${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+    await supabase.storage
+        .from('receipts')
+        .uploadBinary(
+          fileName,
+          bytes,
+          fileOptions: const FileOptions(
+            contentType: 'application/pdf',
+            upsert: true,
+          ),
+        );
+
+    return supabase.storage.from('receipts').getPublicUrl(fileName);
+  }
+
+  // EOD — generate PDF dan hantar ke WhatsApp
   Future<void> _closeDay() async {
     final isToday =
         DateFormat('yyyy-MM-dd').format(_selectedDate) ==
@@ -339,10 +419,11 @@ class _ReportScreenState extends State<ReportScreen> {
       return;
     }
 
+    // Confirm dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Tutup Hari'),
+        title: const Text('End of Day'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -353,11 +434,12 @@ class _ReportScreenState extends State<ReportScreen> {
             ),
             const SizedBox(height: 8),
             Text('Transaksi: ${_sales.length}'),
+            Text('Item: $_totalQty'),
             Text('Pendapatan: RM ${_totalRevenue.toStringAsFixed(2)}'),
             const SizedBox(height: 12),
             const Text(
-              'Adakah anda pasti nak tutup jualan hari ini?',
-              style: TextStyle(color: AppColors.subtext),
+              'Laporan EOD akan dihantar ke WhatsApp selepas tutup hari.',
+              style: TextStyle(color: AppColors.subtext, fontSize: 13),
             ),
           ],
         ),
@@ -369,7 +451,7 @@ class _ReportScreenState extends State<ReportScreen> {
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.danger,
+              backgroundColor: AppColors.warning,
               foregroundColor: Colors.white,
             ),
             child: const Text('Tutup Hari'),
@@ -378,17 +460,215 @@ class _ReportScreenState extends State<ReportScreen> {
       ),
     );
 
-    if (confirm == true) {
-      setState(() => _dayClosed = true);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Hari telah ditutup. Jumpa esok!'),
-            backgroundColor: AppColors.success,
+    if (confirm != true) return;
+
+    // Masuk no phone bos
+    if (!mounted) return;
+    final phoneController = TextEditingController();
+    bool isUploading = false;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => Padding(
+          padding: EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 24,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.warningLight,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.summarize_outlined,
+                      color: AppColors.warning,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hantar Laporan EOD',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.text,
+                        ),
+                      ),
+                      Text(
+                        'PDF report dihantar ke WhatsApp bos',
+                        style: TextStyle(
+                          color: AppColors.subtext,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'No Telefon Bos',
+                  hintText: '011-12345678',
+                  prefixIcon: Icon(Icons.phone_outlined),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Format: 011-12345678',
+                style: TextStyle(color: AppColors.subtext, fontSize: 11),
+              ),
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: isUploading
+                      ? null
+                      : () async {
+                          var phone = phoneController.text
+                              .trim()
+                              .replaceAll('-', '')
+                              .replaceAll(' ', '');
+
+                          if (phone.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Sila masukkan no telefon bos'),
+                                backgroundColor: AppColors.danger,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (phone.startsWith('0')) {
+                            phone = '6$phone';
+                          }
+                          if (!phone.startsWith('6')) {
+                            phone = '60$phone';
+                          }
+
+                          setState(() => isUploading = true);
+
+                          try {
+                            // Generate PDF
+                            final bytes = await _generateEODPDF();
+
+                            // Upload
+                            final pdfUrl = await _uploadReportToStorage(bytes);
+
+                            final dateStr = _dateFormatter.format(
+                              _selectedDate,
+                            );
+                            final message =
+                                'Laporan EOD - $dateStr 📊\n\nTransaksi: ${_sales.length}\nItem: $_totalQty\nPendapatan: RM ${_totalRevenue.toStringAsFixed(2)}\n\nMuat turun laporan penuh:\n$pdfUrl';
+
+                            final waUrl =
+                                'https://wa.me/$phone?text=${Uri.encodeComponent(message)}';
+
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                            }
+
+                            setState(() => _dayClosed = true);
+
+                            if (await canLaunchUrl(Uri.parse(waUrl))) {
+                              await launchUrl(
+                                Uri.parse(waUrl),
+                                mode: LaunchMode.externalApplication,
+                              );
+                            }
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(this.context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Laporan EOD dihantar!'),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setState(() => isUploading = false);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error: ${e.toString()}'),
+                                  backgroundColor: AppColors.danger,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                  icon: isUploading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.send, size: 18),
+                  label: Text(isUploading ? 'Menghantar...' : 'Hantar Laporan'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.warning,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _generatePDF() async {
+    final bytes = await _generateEODPDF();
+    // Share locally
+    final supabase = Supabase.instance.client;
+    final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
+    final fileName =
+        'eod-report-$dateStr-${DateTime.now().millisecondsSinceEpoch}.pdf';
+
+    await supabase.storage
+        .from('receipts')
+        .uploadBinary(
+          fileName,
+          bytes,
+          fileOptions: const FileOptions(
+            contentType: 'application/pdf',
+            upsert: true,
           ),
         );
-      }
-    }
   }
 
   String _paymentLabel(String method) {
@@ -708,7 +988,7 @@ class _ReportScreenState extends State<ReportScreen> {
                       ),
                       SizedBox(width: 8),
                       Text(
-                        'Hari telah ditutup',
+                        'Hari telah ditutup — Laporan dihantar',
                         style: TextStyle(
                           color: AppColors.success,
                           fontWeight: FontWeight.w600,
