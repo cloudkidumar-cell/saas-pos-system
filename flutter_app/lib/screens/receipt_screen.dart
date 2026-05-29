@@ -4,6 +4,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/theme.dart';
 import '../utils/date_helper.dart';
 
@@ -11,6 +12,8 @@ class ReceiptScreen extends StatelessWidget {
   final Map<String, dynamic> sale;
 
   const ReceiptScreen({super.key, required this.sale});
+
+  static const String _cmsBaseUrl = 'https://saas-pos-system-tau.vercel.app';
 
   Future<void> _sharePDF(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
@@ -236,6 +239,157 @@ class ReceiptScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _sendWhatsApp(BuildContext context) async {
+    final phoneController = TextEditingController();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          left: 24,
+          right: 24,
+          top: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.chat_outlined,
+                    color: Color(0xFF25D366),
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Hantar Resit via WhatsApp',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    Text(
+                      'Customer boleh tengok resit online',
+                      style: TextStyle(color: AppColors.subtext, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Phone field
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'No Telefon Customer',
+                hintText: '011-12345678',
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Format: 011-12345678 atau 601112345678',
+              style: TextStyle(color: AppColors.subtext, fontSize: 11),
+            ),
+            const SizedBox(height: 24),
+
+            // Send button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () async {
+                  var phone = phoneController.text
+                      .trim()
+                      .replaceAll('-', '')
+                      .replaceAll(' ', '');
+
+                  if (phone.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Sila masukkan no telefon'),
+                        backgroundColor: AppColors.danger,
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Format phone number
+                  if (phone.startsWith('0')) {
+                    phone = '6$phone';
+                  }
+                  if (!phone.startsWith('6')) {
+                    phone = '60$phone';
+                  }
+
+                  // Receipt web link
+                  final receiptUrl = '$_cmsBaseUrl/receipt/${sale['id']}';
+
+                  // WhatsApp message
+                  final message =
+                      'Terima kasih kerana membeli! 🛍️\n\nSila klik link untuk melihat resit anda:\n$receiptUrl';
+
+                  final waUrl =
+                      'https://wa.me/$phone?text=${Uri.encodeComponent(message)}';
+
+                  Navigator.pop(context);
+
+                  if (await canLaunchUrl(Uri.parse(waUrl))) {
+                    await launchUrl(
+                      Uri.parse(waUrl),
+                      mode: LaunchMode.externalApplication,
+                    );
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('WhatsApp tidak dijumpai'),
+                          backgroundColor: AppColors.danger,
+                        ),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.send, size: 18),
+                label: const Text('Buka WhatsApp'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   String _paymentLabel(String method) {
     switch (method) {
       case 'qr_bank':
@@ -274,6 +428,7 @@ class ReceiptScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            // Success card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(24),
@@ -319,6 +474,7 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
+            // Receipt detail card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -383,6 +539,7 @@ class ReceiptScreen extends StatelessWidget {
                   }),
                   const Divider(height: 20),
 
+                  // Total
                   _ReceiptRow(
                     label: 'Total',
                     value: 'RM ${total.toStringAsFixed(2)}',
@@ -391,11 +548,14 @@ class ReceiptScreen extends StatelessWidget {
                     fontSize: 16,
                   ),
                   const SizedBox(height: 8),
+
+                  // Payment method
                   _ReceiptRow(
                     label: 'Kaedah Bayaran',
                     value: _paymentLabel(paymentMethod),
                   ),
 
+                  // Cash details
                   if (paymentMethod == 'cash' && cashReceived != null) ...[
                     const SizedBox(height: 4),
                     _ReceiptRow(
@@ -441,6 +601,7 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
+            // Share PDF button
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -452,6 +613,26 @@ class ReceiptScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
+            // WhatsApp button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton.icon(
+                onPressed: () => _sendWhatsApp(context),
+                icon: const Icon(Icons.chat_outlined, size: 18),
+                label: const Text('Hantar via WhatsApp'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+
+            // New sale button
             SizedBox(
               width: double.infinity,
               height: 48,
