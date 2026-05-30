@@ -20,25 +20,11 @@ router.get('/', getLibrary);
 router.get('/kategori', getKategori);
 router.get('/barcode/:barcode', getLibraryByBarcode);
 
-router.post(
-  '/',
-  authorize('admin'),
-  createLibraryProduct
-);
-router.put(
-  '/:id',
-  authorize('admin'),
-  updateLibraryProduct
-);
-router.delete(
-  '/:id',
-  authorize('admin'),
-  deleteLibraryProduct
-);
-router.post(
-  '/add-to-tenant',
-  authorize('admin'),
-  addToTenant
-);
+router.post('/', authorize('admin'), createLibraryProduct);
+router.put('/:id', authorize('admin'), updateLibraryProduct);
+router.delete('/:id', authorize('admin'), deleteLibraryProduct);
+
+// Tenant dan admin boleh add ke kedai
+router.post('/add-to-tenant', addToTenant);
 
 module.exports = router;
