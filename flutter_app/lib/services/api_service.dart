@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   static const String baseUrl =
-      'https://saas-pos-system-production.up.railway.app';
+      //'https://saas-pos-system-production.up.railway.app';
+      'https://saas-pos-system-production-6139.up.railway.app';
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -369,7 +370,8 @@ class ApiService {
     return DateTime.parse(dateStr).toLocal();
   }
 
-  static const String supabaseUrl = 'https://gpmmgfibmbmfyvnmmdge.supabase.co';
+  static const String supabaseUrl = 'https://bwninrdadepztbyhmfbs.supabase.co';
+  //'https://gpmmgfibmbmfyvnmmdge.supabase.co';
   static const String supabaseAnonKey =
-      'sb_publishable_gBgZoL-aD07KZAP8WWnDlQ_bfgzv0j-';
+      'sb_publishable_5Ve90Gmg5AOdl2PN5PzGug_GuMqwzPM';
 }
