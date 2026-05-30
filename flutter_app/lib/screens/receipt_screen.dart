@@ -14,7 +14,7 @@ class ReceiptScreen extends StatelessWidget {
 
   const ReceiptScreen({super.key, required this.sale});
 
-  static const String _cmsBaseUrl = 'https://saas-pos-system-two.vercel.app';
+  static const String _cmsBaseUrl = 'https://admin.nbyte-tech.com';
 
   Future<Uint8List> _generatePDFBytes(SharedPreferences prefs) async {
     final namaKedai = prefs.getString('nama_kedai') ?? 'Kedai Saya';

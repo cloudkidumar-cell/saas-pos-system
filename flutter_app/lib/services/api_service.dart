@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  static const String baseUrl =
-      //'https://saas-pos-system-production.up.railway.app';
-      'https://saas-pos-system-production-6139.up.railway.app';
+  static const String baseUrl = 'https;//api.nbyte-tech.com';
+  //'https://saas-pos-system-production.up.railway.app';
+  //'https://saas-pos-system-production-6139.up.railway.app';
 
   static Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
