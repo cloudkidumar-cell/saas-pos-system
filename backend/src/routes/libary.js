@@ -16,12 +16,12 @@ const {
 
 router.use(authenticate);
 
-// Semua boleh access library — untuk search
+// Semua roles boleh access — untuk search
 router.get('/', getLibrary);
 router.get('/kategori', getKategori);
 router.get('/barcode/:barcode', getLibraryByBarcode);
 
-// Admin je boleh manage library
+// Admin je boleh manage library content
 router.post(
   '/',
   authorize('admin'),
@@ -38,11 +38,7 @@ router.delete(
   deleteLibraryProduct
 );
 
-// Admin add product ke tenant
-router.post(
-  '/add-to-tenant',
-  authorize('admin'),
-  addToTenant
-);
+// Tenant DAN admin boleh add ke kedai sendiri
+router.post('/add-to-tenant', addToTenant);
 
 module.exports = router;
